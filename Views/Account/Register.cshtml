@@ -1,0 +1,138 @@
+﻿@model diplom.ViewModels.RegisterViewModel
+
+@{
+    ViewData["Title"] = "Регистрация студента";
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <style>
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #6c757d;
+        }
+
+            .password-toggle:hover {
+                color: #007bff;
+            }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card fade-in">
+            <h2><i class="fas fa-user-graduate"></i> Регистрация студента</h2>
+
+            <form asp-action="Register" method="post">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="LastName" class="form-label">Фамилия</label>
+                        <input asp-for="LastName" class="form-control" />
+                        <span asp-validation-for="LastName" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="FirstName" class="form-label">Имя</label>
+                        <input asp-for="FirstName" class="form-control" />
+                        <span asp-validation-for="FirstName" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label asp-for="MiddleName" class="form-label">Отчество</label>
+                        <input asp-for="MiddleName" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="UserName" class="form-label">Логин</label>
+                    <input asp-for="UserName" class="form-control" />
+                    <span asp-validation-for="UserName" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Email" class="form-label">Email</label>
+                    <input asp-for="Email" class="form-control" type="email" />
+                    <span asp-validation-for="Email" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Password" class="form-label">Пароль</label>
+                    <div class="password-wrapper">
+                        <input asp-for="Password" class="form-control" type="password" id="Password" />
+                        <i class="fas fa-eye password-toggle" onclick="togglePassword('Password')"></i>
+                    </div>
+                    <span asp-validation-for="Password" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="ConfirmPassword" class="form-label">Подтверждение пароля</label>
+                    <div class="password-wrapper">
+                        <input asp-for="ConfirmPassword" class="form-control" type="password" id="ConfirmPassword" />
+                        <i class="fas fa-eye password-toggle" onclick="togglePassword('ConfirmPassword')"></i>
+                    </div>
+                    <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="VerificationCode" class="form-label">Код верификации</label>
+                    <input asp-for="VerificationCode" class="form-control" />
+                    <span asp-validation-for="VerificationCode" class="text-danger"></span>
+                    <small class="text-muted">* Код выдаётся дирекцией института</small>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
+            </form>
+
+            <div class="auth-link">
+                <a asp-action="Login">Уже есть аккаунт? Войдите</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+    @section Scripts {
+        <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+        <script>
+            // Инициализация дропдауна Bootstrap
+            var dropdownElementList = [].slice.call(document.querySelectorAll('.dropdown-toggle'))
+            var dropdownList = dropdownElementList.map(function (dropdownToggleEl) {
+                return new bootstrap.Dropdown(dropdownToggleEl)
+            });
+        </script>
+    }
+    <script>
+        function togglePassword(fieldId) {
+            var field = document.getElementById(fieldId);
+            var icon = field.nextElementSibling;
+            if (field.type === "password") {
+                field.type = "text";
+                icon.classList.remove("fa-eye");
+                icon.classList.add("fa-eye-slash");
+            } else {
+                field.type = "password";
+                icon.classList.remove("fa-eye-slash");
+                icon.classList.add("fa-eye");
+            }
+        }
+    </script>
+</body>
+</html>

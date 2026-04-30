@@ -1,0 +1,129 @@
+﻿@model diplom.ViewModels.CreateUserViewModel
+
+@{
+    ViewData["Title"] = "Создание преподавателя";
+}
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="mb-0"><i class="fas fa-chalkboard-teacher"></i> Создание преподавателя</h3>
+    </div>
+    <div class="card-body">
+        <form asp-action="CreateLecturer" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="Role" value="Lecturer" />
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label asp-for="LastName" class="form-label">Фамилия</label>
+                    <input asp-for="LastName" class="form-control" />
+                    <span asp-validation-for="LastName" class="text-danger"></span>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label asp-for="FirstName" class="form-label">Имя</label>
+                    <input asp-for="FirstName" class="form-control" />
+                    <span asp-validation-for="FirstName" class="text-danger"></span>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label asp-for="MiddleName" class="form-label">Отчество</label>
+                    <input asp-for="MiddleName" class="form-control" />
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="UserName" class="form-label">Логин</label>
+                    <input asp-for="UserName" class="form-control" />
+                    <span asp-validation-for="UserName" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Email" class="form-label">Email</label>
+                    <input asp-for="Email" class="form-control" type="email" />
+                    <span asp-validation-for="Email" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Пароль</label>
+                <div class="input-group">
+                    <input asp-for="Password" class="form-control" type="password" id="passwordField" />
+                    <button type="button" class="btn btn-outline-secondary" onclick="togglePassword()">
+                        <i class="fas fa-eye" id="passwordIcon"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="generatePassword()">
+                        <i class="fas fa-dice-d6"></i> Сгенерировать
+                    </button>
+                </div>
+                <span asp-validation-for="Password" class="text-danger"></span>
+                <small class="text-muted">Пароль должен содержать не менее 6 символов</small>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Department" class="form-label">Кафедра</label>
+                    <input asp-for="Department" class="form-control" />
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Position" class="form-label">Должность</label>
+                    <input asp-for="Position" class="form-control" />
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <button type="submit" class="btn btn-primary">Создать преподавателя</button>
+                <a asp-action="AllUsers" class="btn btn-secondary">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function togglePassword() {
+            const field = document.getElementById('passwordField');
+            const icon = document.getElementById('passwordIcon');
+            if (field.type === 'password') {
+                field.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                field.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+
+        function generatePassword() {
+            // Генератор пароля: 8-12 символов, буквы разные регистры + цифры
+            const length = Math.floor(Math.random() * 5) + 8;
+            const uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+            const lowercase = 'abcdefghijkmnpqrstuvwxyz';
+            const numbers = '23456789';
+            const allChars = uppercase + lowercase + numbers;
+
+            let password = '';
+            // Гарантируем хотя бы одну заглавную букву
+            password += uppercase[Math.floor(Math.random() * uppercase.length)];
+            // Гарантируем хотя бы одну строчную букву
+            password += lowercase[Math.floor(Math.random() * lowercase.length)];
+            // Гарантируем хотя бы одну цифру
+            password += numbers[Math.floor(Math.random() * numbers.length)];
+
+            // Заполняем остальные символы
+            for (let i = password.length; i < length; i++) {
+                password += allChars[Math.floor(Math.random() * allChars.length)];
+            }
+
+            // Перемешиваем символы для случайности
+            password = password.split('').sort(() => Math.random() - 0.5).join('');
+
+            const passwordField = document.getElementById('passwordField');
+            passwordField.value = password;
+
+            // Показываем сгенерированный пароль
+            if (passwordField.type === 'password') {
+                togglePassword();
+            }
+        }
+    </script>
+}

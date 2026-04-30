@@ -1,0 +1,86 @@
+﻿@{
+    ViewData["Title"] = "Управление группами курса";
+    var course = ViewBag.Course as diplom.Models.Course;
+    var assignedGroups = ViewBag.AssignedGroups as HashSet<int>;
+    var allGroups = ViewBag.AllGroups as List<diplom.Models.StudentGroup> ?? new List<diplom.Models.StudentGroup>();
+}
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="mb-0"><i class="fas fa-users"></i> Группы курса: @course?.Name</h3>
+        <div>
+            <button type="button" class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#createGroupModal">
+                <i class="fas fa-plus"></i> Создать группу
+            </button>
+            <a asp-action="ManageCourses" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Назад к курсам
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Название группы</th>
+                        <th>Год поступления</th>
+                        <th>Кол-во студентов</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var group in allGroups)
+                    {
+                        var isAssigned = assignedGroups?.Contains(group.Id) ?? false;
+                        <tr>
+                            <td>@group.Id</td>
+                            <td>@group.Name</td>
+                            <td>@group.YearOfAdmission</td             
+                            <td>@if (group.Students != null)
+                                {
+                                    @group.Students.Count
+                                }
+                                else
+                                {
+                                    <span class="text-muted">0</span>
+                                }
+                            </td>
+                         
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-3">
+            <a asp-action="ManageCourses" class="btn btn-secondary">Назад к курсам</a>
+        </div>
+    </div>
+</div>
+<!-- Модальное окно создания группы -->
+<div class="modal fade" id="createGroupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="CreateGroup" method="post">
+                <input type="hidden" name="CourseId" value="@course?.Id" />
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Создание группы для курса: @course?.Name</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Название группы</label>
+                        <input type="text" name="Name" class="form-control" placeholder="например: ИСТ-122" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Год поступления</label>
+                        <input type="number" name="YearOfAdmission" class="form-control" value="@DateTime.Now.Year" required />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Создать группу</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

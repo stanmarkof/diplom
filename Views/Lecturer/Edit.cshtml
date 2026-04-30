@@ -1,0 +1,90 @@
+﻿@model diplom.ViewModels.EditDisciplineViewModel
+
+@{
+    ViewData["Title"] = "Редактирование дисциплины";
+}
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="mb-0"><i class="fas fa-edit"></i> Редактирование дисциплины</h3>
+    </div>
+    <div class="card-body">
+        <form asp-action="Edit" method="post">
+            <input type="hidden" asp-for="Id" />
+
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label">Название дисциплины</label>
+                <input asp-for="Name" class="form-control" required />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label">Описание</label>
+                <textarea asp-for="Description" class="form-control" rows="5"></textarea>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <label asp-for="CourseId" class="form-label">Направление (курс)</label>
+                    <select asp-for="CourseId" class="form-select" asp-items="ViewBag.Courses" required>
+                        <option value="">-- Выберите курс --</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="CourseNumber" class="form-label">Курс обучения</label>
+                    <input asp-for="CourseNumber" class="form-control" required />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Semester" class="form-label">Семестр</label>
+                    <input asp-for="Semester" class="form-control" required />
+                </div>
+            </div>
+
+            <!-- Доступ для групп -->
+            <div class="mt-4">
+                <h5><i class="fas fa-users"></i> Доступ для групп</h5>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> Отметьте группы, которым будет доступна эта дисциплина.
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            </tr>
+                                <th>Группа</th>
+                                <th>Студентов</th>
+                                <th>Доступ открыт</th>
+                            </thead>
+                        <tbody>
+                            @for (int i = 0; i < Model.Groups.Count; i++)
+                            {
+                                <input type="hidden" asp-for="Groups[i].GroupId" />
+                                <input type="hidden" asp-for="Groups[i].GroupName" />
+                                <input type="hidden" asp-for="Groups[i].StudentCount" />
+                                <tr>
+                                    <td>@Model.Groups[i].GroupName</td>
+                                    <td>@Model.Groups[i].StudentCount</td>
+                                    <td>
+                                        <div class="form-check form-switch">
+                                            <input type="checkbox" class="form-check-input" asp-for="Groups[i].IsOpen" />
+                                            <label class="form-check-label">
+                                                @(Model.Groups[i].IsOpen ? "Открыт" : "Закрыт")
+                                            </label>
+                                        </div>
+                                     </td>
+                                 </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>

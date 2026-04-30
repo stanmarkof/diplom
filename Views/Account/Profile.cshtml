@@ -1,0 +1,89 @@
+﻿@model diplom.ViewModels.ProfileViewModel
+
+@{
+    ViewData["Title"] = "Мой профиль";
+}
+
+<div class="container mt-5 fade-in">
+    <div class="profile-header">
+        <i class="fas fa-user-circle fa-5x"></i>
+        <h2>@Model.LastName @Model.FirstName @Model.MiddleName</h2>
+        <p class="mb-0">@Model.Role</p>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="profile-info">
+                <div class="profile-info-item">
+                    <div class="row">
+                        <div class="col-md-3 profile-info-label">Логин:</div>
+                        <div class="col-md-9">@Model.UserName</div>
+                    </div>
+                </div>
+
+                <div class="profile-info-item">
+                    <div class="row">
+                        <div class="col-md-3 profile-info-label">Email:</div>
+                        <div class="col-md-9">@Model.Email</div>
+                    </div>
+                </div>
+
+                @if (Model.Role == "Student")
+                {
+                    <div class="profile-info-item">
+                        <div class="row">
+                            <div class="col-md-3 profile-info-label">Группа:</div>
+                            <div class="col-md-9">
+                                @if (Model.HasGroup)
+                                {
+                                    <span class="badge bg-success">@Model.GroupName</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning">Группа не назначена</span>
+                                    <small class="text-muted d-block mt-1">Дождитесь назначения группы администратором</small>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(Model.Department))
+                {
+                    <div class="profile-info-item">
+                        <div class="row">
+                            <div class="col-md-3 profile-info-label">Кафедра:</div>
+                            <div class="col-md-9">@Model.Department</div>
+                        </div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(Model.Position))
+                {
+                    <div class="profile-info-item">
+                        <div class="row">
+                            <div class="col-md-3 profile-info-label">Должность:</div>
+                            <div class="col-md-9">@Model.Position</div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="mt-4 d-flex justify-content-between">
+                <a asp-action="Edit" class="btn btn-primary">Редактировать профиль</a>
+                <a asp-action="ChangePassword" class="btn btn-warning">Сменить пароль</a>
+                <form asp-action="Logout" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-danger">Выйти</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (User.IsInRole("Student") && !Model.HasGroup)
+{
+    <div class="alert alert-warning text-center mt-3">
+        <i class="fas fa-info-circle"></i>
+        <strong>Внимание!</strong> Ваша группа ещё не назначена. Некоторые функции системы будут недоступны до назначения группы.
+    </div>
+}

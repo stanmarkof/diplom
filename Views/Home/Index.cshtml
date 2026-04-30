@@ -1,0 +1,180 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using diplom.Models
+@inject UserManager<User> UserManager
+@{
+    ViewData["Title"] = "Главная";
+    var user = await UserManager.GetUserAsync(User);
+    var isStudent = User.IsInRole("Student");
+    var isLecturer = User.IsInRole("Lecturer");
+    var isAdmin = User.IsInRole("Admin");
+
+    // Проверяем, есть ли у студента группа
+    var hasGroup = false;
+    if (isStudent && user != null)
+    {
+        var student = user as Student;
+        hasGroup = student?.StudentGroupId.HasValue ?? false;
+    }
+}
+
+<div class="text-center fade-in">
+    <h1 class="display-4 mb-4">Добро пожаловать в систему дистанционного обучения</h1>
+
+    @if (User.Identity.IsAuthenticated)
+    {
+        <p class="lead">Здравствуйте, @User.Identity.Name!</p>
+
+        @if (!hasGroup && isStudent)
+        {
+            <div class="alert alert-warning">
+                <i class="fas fa-info-circle"></i>
+                <strong>Внимание!</strong> Ваша группа ещё не назначена. Дождитесь назначения группы администратором.
+            </div>
+        }
+
+        <div class="row mt-5">
+            @if (isAdmin)
+            {
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-users fa-3x mb-3" style="color: var(--primary-color);"></i>
+                            <h5 class="card-title">Все пользователи</h5>
+                            <p class="card-text">Управление пользователями, назначение групп и ролей</p>
+                            <a asp-controller="Admin" asp-action="AllUsers" class="btn btn-primary">Перейти</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-chalkboard-teacher fa-3x mb-3" style="color: var(--success-color);"></i>
+                            <h5 class="card-title">Создать преподавателя</h5>
+                            <p class="card-text">Добавление нового преподавателя в систему</p>
+                            <a asp-controller="Admin" asp-action="CreateLecturer" class="btn btn-primary">Перейти</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-user-shield fa-3x mb-3" style="color: var(--danger-color);"></i>
+                            <h5 class="card-title">Создать администратора</h5>
+                            <p class="card-text">Добавление нового администратора системы</p>
+                            <a asp-controller="Admin" asp-action="CreateAdmin" class="btn btn-primary">Перейти</a>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @if (isLecturer)
+            {
+                <div class="col-md-6 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-book-open fa-3x mb-3" style="color: var(--primary-color);"></i>
+                            <h5 class="card-title">Мои дисциплины</h5>
+                            <p class="card-text">Управление дисциплинами, материалами и тестами</p>
+                            <a asp-controller="Lecturer" asp-action="Index" class="btn btn-primary">Перейти</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-edit fa-3x mb-3" style="color: var(--success-color);"></i>
+                            <h5 class="card-title">Создать дисциплину</h5>
+                            <p class="card-text">Создание новой дисциплины</p>
+                            <a asp-controller="Lecturer" asp-action="CreateDiscipline" class="btn btn-primary">Перейти</a>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @if (isStudent && hasGroup)
+            {
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-book fa-3x mb-3" style="color: var(--primary-color);"></i>
+                            <h5 class="card-title">Мои дисциплины</h5>
+                            <p class="card-text">Просмотр доступных дисциплин и учебных материалов</p>
+                            <a asp-controller="Student" asp-action="MyDisciplines" class="btn btn-primary">Перейти</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-tasks fa-3x mb-3" style="color: var(--success-color);"></i>
+                            <h5 class="card-title">Мои тесты</h5>
+                            <p class="card-text">Прохождение тестов и просмотр результатов</p>
+                            <a asp-controller="Student" asp-action="MyTests" class="btn btn-primary">Перейти</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-robot fa-3x mb-3" style="color: var(--secondary-color);"></i>
+                            <h5 class="card-title">AI Помощник</h5>
+                            <p class="card-text">Задайте вопрос AI боту по учебным материалам</p>
+                            <a asp-controller="Bot" asp-action="Index" class="btn btn-primary">Перейти</a>
+                        </div>
+                    </div>
+                </div>
+            }
+            else if (isStudent && !hasGroup)
+            {
+                <div class="col-md-12">
+                    <div class="alert alert-info text-center">
+                        <i class="fas fa-clock fa-2x mb-3 d-block"></i>
+                        <h4>Доступ ограничен</h4>
+                        <p>Ваша группа ещё не назначена. После назначения группы администратором вам станут доступны все функции системы.</p>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="mt-5">
+            <p class="lead">Добро пожаловать в систему дистанционного обучения!</p>
+            <p>Для доступа к учебным материалам необходимо войти в систему или зарегистрироваться.</p>
+            <div class="mt-4">
+                <a asp-controller="Account" asp-action="Login" class="btn btn-primary btn-lg mx-2">Вход</a>
+                <a asp-controller="Account" asp-action="Register" class="btn btn-success btn-lg mx-2">Регистрация</a>
+            </div>
+        </div>
+
+        <div class="row mt-5">
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-graduation-cap fa-3x mb-3"></i>
+                        <h5 class="card-title">Дистанционное обучение</h5>
+                        <p class="card-text">Удобная платформа для получения знаний онлайн</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-tasks fa-3x mb-3"></i>
+                        <h5 class="card-title">Тестирование</h5>
+                        <p class="card-text">Проверка знаний с помощью тестов</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-robot fa-3x mb-3"></i>
+                        <h5 class="card-title">AI Помощник</h5>
+                        <p class="card-text">Интеллектуальный помощник для обучения</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>

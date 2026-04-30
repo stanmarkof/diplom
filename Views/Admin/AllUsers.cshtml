@@ -1,0 +1,518 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using diplom.Models
+@inject UserManager<User> UserManager
+@model List<diplom.ViewModels.UserRoleViewModel>
+
+@{
+    ViewData["Title"] = "Управление пользователями";
+    var searchUserId = ViewData["SearchUserId"] as string;
+    var searchRole = ViewData["SearchRole"] as string;
+    var searchFullName = ViewData["SearchFullName"] as string;
+    var searchGroupId = ViewData["SearchGroupId"] as string;
+    var currentUserId = UserManager.GetUserId(User);
+    var allGroups = ViewBag.AllGroups as List<StudentGroup> ?? new List<StudentGroup>();
+}
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="mb-0"><i class="fas fa-users"></i> Управление пользователями</h3>
+    </div>
+    <div class="card-body">
+        <!-- Форма поиска -->
+        <form method="get" class="row g-3 mb-4">
+            <div class="col-md-3">
+                <label class="form-label">Поиск по ID</label>
+                <input type="text" name="searchUserId" class="form-control" value="@searchUserId" placeholder="Введите ID" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Поиск по ФИО</label>
+                <input type="text" name="searchFullName" class="form-control" value="@searchFullName" placeholder="Введите ФИО" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Фильтр по роли</label>
+                <select name="searchRole" class="form-select" id="searchRole">
+                    <option value="">Все роли</option>
+                    <option value="Admin" selected="@(searchRole == "Admin")">Admin</option>
+                    <option value="Lecturer" selected="@(searchRole == "Lecturer")">Lecturer</option>
+                    <option value="Student" selected="@(searchRole == "Student")">Student</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Фильтр по группе</label>
+                <select name="searchGroupId" class="form-select" id="searchGroupId">
+                    <option value="">Все группы</option>
+                    @foreach (var group in ViewBag.GroupsForFilter as SelectList)
+                    {
+                        <option value="@group.Value" selected="@(searchGroupId == group.Value)">
+                            @group.Text
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+               
+                <a asp-action="AllUsers" class="btn btn-secondary w-70">Сбросить</a>
+            </div>
+        </form>
+
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>ФИО</th>
+                        <th>Логин</th>
+                        <th>Email</th>
+                        <th>Роль</th>
+                        <th>Группа</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in Model)
+                    {
+                        var roles = string.Join(", ", user.Roles);
+                        var isStudent = user.Roles.Contains("Student");
+                        <tr>
+                            <td>@user.UserId</td>
+                            <td>@user.FullName</td>
+                            <td>@user.UserName</td>
+                            <td>@user.Email</td>
+                            <td>
+                                @if (isStudent)
+                                {
+                                    <div class="d-flex gap-2">
+                                        <select class="form-select form-select-sm group-select" data-userid="@user.UserId" style="width: auto; min-width: 120px;">
+                                            <option value="">-- Нет группы --</option>
+                                            @foreach (var group in allGroups)
+                                            {
+                                                <option value="@group.Id" selected="@(user.GroupId == group.Id)">
+                                                    @group.Name
+                                                </option>
+                                            }
+                                        </select>
+                                        <span class="text-success group-save-success@(user.UserId)" style="display: none; font-size: 12px;">
+                                            <i class="fas fa-check"></i>
+                                        </span>
+                                        <span class="text-danger group-save-error@(user.UserId)" style="display: none; font-size: 12px;">
+                                            <i class="fas fa-times"></i>
+                                        </span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td>
+                                @if (currentUserId != user.UserId.ToString())
+                                {
+                                    <div class="d-flex gap-2">
+                                        <select class="form-select form-select-sm role-select"
+                                                data-userid="@user.UserId"
+                                                data-username="@user.FullName"
+                                                data-currentrole="@roles"
+                                                style="width: auto; min-width: 120px;">
+                                            <option value="Student" selected="@(user.Roles.Contains("Student"))">Student</option>
+                                            <option value="Lecturer" selected="@(user.Roles.Contains("Lecturer"))">Lecturer</option>
+                                            <option value="Admin" selected="@(user.Roles.Contains("Admin"))">Admin</option>
+                                        </select>
+                                        <span class="text-success role-save-success@(user.UserId)" style="display: none; font-size: 12px;">
+                                            <i class="fas fa-check"></i>
+                                        </span>
+                                        <span class="text-danger role-save-error@(user.UserId)" style="display: none; font-size: 12px;">
+                                            <i class="fas fa-times"></i>
+                                        </span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    @roles
+                                }
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#editModal@(user.UserId)">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                
+                                <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal@(user.UserId)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+
+                        <!-- Модальное окно редактирования -->
+                        <div class="modal fade" id="editModal@(user.UserId)" tabindex="-1">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <form asp-action="EditUser" method="post">
+                                        <input type="hidden" name="Id" value="@user.UserId" />
+                                        <div class="modal-header bg-info text-white">
+                                            <h5 class="modal-title"><i class="fas fa-edit"></i> Редактирование пользователя</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="row">
+                                                <div class="col-md-4 mb-3">
+                                                    <label class="form-label">Фамилия</label>
+                                                    <input type="text" name="LastName" class="form-control" value="@(user.FullName.Split(' ').FirstOrDefault())" required />
+                                                </div>
+                                                <div class="col-md-4 mb-3">
+                                                    <label class="form-label">Имя</label>
+                                                    <input type="text" name="FirstName" class="form-control" value="@(user.FullName.Split(' ').Skip(1).FirstOrDefault())" required />
+                                                </div>
+                                                <div class="col-md-4 mb-3">
+                                                    <label class="form-label">Отчество</label>
+                                                    <input type="text" name="MiddleName" class="form-control" value="@(user.FullName.Split(' ').Skip(2).FirstOrDefault())" />
+                                                </div>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label">Email</label>
+                                                <input type="email" name="Email" class="form-control" value="@user.Email" required />
+                                            </div>
+
+                                            <input type="hidden" name="UserName" value="@user.UserName" />
+                                            <input type="hidden" name="CurrentRole" value="@roles" />
+                                            <input type="hidden" name="GroupId" value="@user.GroupId" />
+
+                                            <div class="mt-3">
+                                                <button type="button" class="btn btn-outline-warning btn-sm" onclick="toggleSensitiveFields(@user.UserId)">
+                                                    <i class="fas fa-exclamation-triangle"></i> Редактировать логин и пароль
+                                                </button>
+                                            </div>
+
+                                            <div id="sensitiveFields@(user.UserId)" style="display:none;" class="mt-3 p-3 border border-warning rounded">
+                                                <div class="alert alert-warning">
+                                                    <i class="fas fa-exclamation-triangle"></i>
+                                                    <strong>Внимание!</strong> Изменение логина и пароля может привести к проблемам с доступом пользователя!
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Новый логин</label>
+                                                    <input type="text" name="NewUserName" class="form-control" value="@user.UserName" />
+                                                    <small class="text-muted">Оставьте пустым, чтобы не менять</small>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Новый пароль</label>
+                                                    <div class="input-group">
+                                                        <input type="password" name="NewPassword" class="form-control" id="newPassword@(user.UserId)" />
+                                                        <button type="button" class="btn btn-outline-secondary" onclick="toggleNewPasswordField(@user.UserId)">
+                                                            <i class="fas fa-eye" id="newPasswordIcon@(user.UserId)"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-secondary" onclick="generateNewPassword(@user.UserId)">
+                                                            <i class="fas fa-dice-d6"></i> Сгенерировать
+                                                        </button>
+                                                    </div>
+                                                    <small class="text-muted">Оставьте пустым, чтобы не менять (минимум 6 символов)</small>
+                                                </div>
+                                            </div>
+                                           
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                            <button type="submit" class="btn btn-info">Сохранить изменения</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Модальное окно удаления -->
+                        <div class="modal fade" id="deleteModal@(user.UserId)" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <form asp-action="DeleteUser" method="post">
+                                        <input type="hidden" name="id" value="@user.UserId" />
+                                        <div class="modal-header bg-danger text-white">
+                                            <h5 class="modal-title"><i class="fas fa-trash"></i> Удаление пользователя</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p>Вы уверены, что хотите удалить пользователя <strong>@user.FullName</strong>?</p>
+                                            <p>ID: <strong>@user.UserId</strong></p>
+                                            <div class="alert alert-warning">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                                <strong>Внимание!</strong> Это действие необратимо! Все данные пользователя будут удалены.
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                            <button type="submit" class="btn btn-danger">Удалить</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+
+    // Отладка - проверяем что форма работает
+    console.log('Скрипт загружен');
+    console.log('searchRole элемент:', document.querySelector('select[name="searchRole"]'));
+    console.log('searchGroupId элемент:', document.querySelector('select[name="searchGroupId"]'));
+
+    // Функции для показа/скрытия полей с паролем
+    function toggleSensitiveFields(userId) {
+        const div = document.getElementById(`sensitiveFields${userId}`);
+        if (div.style.display === 'none') {
+            div.style.display = 'block';
+        } else {
+            div.style.display = 'none';
+        }
+    }
+
+    // Обработчик для смены группы через выпадающий список
+    document.querySelectorAll('.group-select').forEach(select => {
+        select.addEventListener('change', async function () {
+            const userId = this.getAttribute('data-userid');
+            const groupId = this.value;
+            const successSpan = document.querySelector(`.group-save-success${userId}`);
+            const errorSpan = document.querySelector(`.group-save-error${userId}`);
+
+            this.classList.add('opacity-50');
+
+            try {
+                const response = await fetch('/Admin/AssignGroup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                    },
+                    body: JSON.stringify({
+                        userId: parseInt(userId),
+                        groupId: groupId ? parseInt(groupId) : null
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    if (successSpan) successSpan.style.display = 'inline';
+                    setTimeout(() => {
+                        if (successSpan) successSpan.style.display = 'none';
+                    }, 2000);
+                } else {
+                    if (errorSpan) errorSpan.style.display = 'inline';
+                    setTimeout(() => {
+                        if (errorSpan) errorSpan.style.display = 'none';
+                    }, 2000);
+                    this.value = this.getAttribute('data-oldvalue') || '';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                if (errorSpan) errorSpan.style.display = 'inline';
+                setTimeout(() => {
+                    if (errorSpan) errorSpan.style.display = 'none';
+                }, 2000);
+                this.value = this.getAttribute('data-oldvalue') || '';
+            } finally {
+                this.classList.remove('opacity-50');
+            }
+        });
+
+        select.addEventListener('focus', function () {
+            this.setAttribute('data-oldvalue', this.value);
+        });
+    });
+
+    // Обработчик для смены роли через выпадающий список
+    document.querySelectorAll('.role-select').forEach(select => {
+        select.addEventListener('change', async function () {
+            const userId = this.getAttribute('data-userid');
+            const newRole = this.value;
+            const userName = this.getAttribute('data-username');
+            const currentRole = this.getAttribute('data-currentrole');
+            const successSpan = document.querySelector(`.role-save-success${userId}`);
+            const errorSpan = document.querySelector(`.role-save-error${userId}`);
+
+            const confirmed = confirm(`Вы уверены, что хотите изменить роль пользователя "${userName}" с "${currentRole}" на "${newRole}"?`);
+
+            if (!confirmed) {
+                const previousRole = this.getAttribute('data-oldvalue');
+                if (previousRole) this.value = previousRole;
+                return;
+            }
+
+            this.classList.add('opacity-50');
+
+            try {
+                // Создаем FormData для отправки
+                const formData = new URLSearchParams();
+                formData.append('userId', userId);
+                formData.append('newRole', newRole);
+
+                // Получаем токен
+                const tokenElement = document.querySelector('input[name="__RequestVerificationToken"]');
+                const token = tokenElement ? tokenElement.value : '';
+
+                const response = await fetch('/Admin/ChangeRole', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'RequestVerificationToken': token
+                    },
+                    body: formData.toString()
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    if (successSpan) successSpan.style.display = 'inline';
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    if (errorSpan) errorSpan.style.display = 'inline';
+                    setTimeout(() => {
+                        if (errorSpan) errorSpan.style.display = 'none';
+                    }, 2000);
+                    const previousRole = this.getAttribute('data-oldvalue');
+                    if (previousRole) this.value = previousRole;
+                    alert('Ошибка: ' + (result.message || 'Неизвестная ошибка'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                if (errorSpan) errorSpan.style.display = 'inline';
+                setTimeout(() => {
+                    if (errorSpan) errorSpan.style.display = 'none';
+                }, 2000);
+                const previousRole = this.getAttribute('data-oldvalue');
+                if (previousRole) this.value = previousRole;
+                alert('Произошла ошибка при смене роли');
+            } finally {
+                this.classList.remove('opacity-50');
+            }
+        });
+
+        select.addEventListener('focus', function () {
+            this.setAttribute('data-oldvalue', this.value);
+        });
+    });
+
+    // Live поиск по таблице
+    const searchFullNameInput = document.querySelector('input[name="searchFullName"]');
+    const searchUserIdInput = document.querySelector('input[name="searchUserId"]');
+    const searchRoleSelect = document.querySelector('select[name="searchRole"]');
+    const searchGroupSelect = document.querySelector('select[name="searchGroupId"]');
+    const tableBody = document.querySelector('.table tbody');
+
+    function filterTable() {
+        const fullNameTerm = searchFullNameInput?.value.toLowerCase().trim() || '';
+        const userIdTerm = searchUserIdInput?.value.toLowerCase().trim() || '';
+        const roleTerm = searchRoleSelect?.value || '';
+        const groupTerm = searchGroupSelect?.value || '';
+
+        const rows = tableBody?.querySelectorAll('tr');
+        if (!rows) return;
+
+        rows.forEach(row => {
+            const userId = row.cells[0]?.textContent.toLowerCase() || '';
+            const fullName = row.cells[1]?.textContent.toLowerCase() || '';
+            const role = row.cells[4]?.textContent.toLowerCase() || '';
+            const group = row.cells[5]?.textContent.toLowerCase() || '';
+
+            let show = true;
+
+            if (userIdTerm && !userId.includes(userIdTerm)) show = false;
+            if (fullNameTerm && !fullName.includes(fullNameTerm)) show = false;
+            if (roleTerm && !role.includes(roleTerm.toLowerCase())) show = false;
+            if (groupTerm && groupTerm !== '' && !group.includes(groupTerm.toLowerCase())) show = false;
+
+            row.style.display = show ? '' : 'none';
+        });
+    }
+
+    if (searchFullNameInput) searchFullNameInput.addEventListener('input', filterTable);
+    if (searchUserIdInput) searchUserIdInput.addEventListener('input', filterTable);
+    if (searchRoleSelect) searchRoleSelect.addEventListener('change', filterTable);
+    if (searchGroupSelect) searchGroupSelect.addEventListener('change', filterTable);
+
+    // Управление доступностью фильтра по группе
+    const roleFilterSelect = document.querySelector('select[name="searchRole"]');
+    const groupFilterSelect = document.querySelector('select[name="searchGroupId"]');
+
+    function toggleGroupFilter() {
+        const selectedRole = roleFilterSelect?.value;
+
+        if (groupFilterSelect) {
+            if (selectedRole === 'Admin' || selectedRole === 'Lecturer') {
+                groupFilterSelect.disabled = true;
+                groupFilterSelect.value = '';
+                groupFilterSelect.style.opacity = '0.5';
+                groupFilterSelect.style.cursor = 'not-allowed';
+            } else {
+                groupFilterSelect.disabled = false;
+                groupFilterSelect.style.opacity = '1';
+                groupFilterSelect.style.cursor = 'default';
+            }
+        }
+    }
+
+    if (roleFilterSelect) {
+        roleFilterSelect.addEventListener('change', toggleGroupFilter);
+    }
+
+    document.addEventListener('DOMContentLoaded', toggleGroupFilter);
+
+    // Функции для пароля
+    function toggleNewPasswordField(userId) {
+        const field = document.getElementById(`newPassword${userId}`);
+        const icon = document.getElementById(`newPasswordIcon${userId}`);
+        if (field.type === "password") {
+            field.type = "text";
+            icon.classList.remove("fa-eye");
+            icon.classList.add("fa-eye-slash");
+        } else {
+            field.type = "password";
+            icon.classList.remove("fa-eye-slash");
+            icon.classList.add("fa-eye");
+        }
+    }
+
+    function generateNewPassword(userId) {
+        const length = Math.floor(Math.random() * 5) + 8;
+        const uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+        const lowercase = 'abcdefghijkmnpqrstuvwxyz';
+        const numbers = '23456789';
+        const allChars = uppercase + lowercase + numbers;
+
+        let password = '';
+        password += uppercase[Math.floor(Math.random() * uppercase.length)];
+        password += lowercase[Math.floor(Math.random() * lowercase.length)];
+        password += numbers[Math.floor(Math.random() * numbers.length)];
+
+        for (let i = password.length; i < length; i++) {
+            password += allChars[Math.floor(Math.random() * allChars.length)];
+        }
+
+        password = password.split('').sort(() => Math.random() - 0.5).join('');
+
+        const passwordField = document.getElementById(`newPassword${userId}`);
+        passwordField.value = password;
+
+        if (passwordField.type === 'password') {
+            toggleNewPasswordField(userId);
+        }
+    }
+
+    // Автоматическая отправка формы при изменении фильтров
+const autoSubmitSelects = document.querySelectorAll('#searchRole, #searchGroupId');
+
+autoSubmitSelects.forEach(select => {
+    select.addEventListener('change', function() {
+        // Находим форму поиска и отправляем её
+        const form = this.closest('form');
+        if (form) {
+            form.submit();
+        }
+    });
+});
+</script>

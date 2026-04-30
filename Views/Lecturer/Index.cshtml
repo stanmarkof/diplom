@@ -1,0 +1,41 @@
+﻿@model List<diplom.Models.Discipline>
+
+@{
+    ViewData["Title"] = "Мои дисциплины";
+}
+
+<div class="row">
+    @foreach (var discipline in Model)
+    {
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">@discipline.Name</h5>
+                    <p class="card-text text-muted">
+                        <small>
+                            <i class="fas fa-graduation-cap"></i> @discipline.Course?.Code
+                            <br />
+                            <i class="fas fa-calendar"></i> @discipline.CourseNumber курс, @discipline.Semester семестр
+                        </small>
+                    </p>
+                    <p class="card-text">@(discipline.Description?.Length > 100 ? discipline.Description.Substring(0, 100) + "..." : discipline.Description)</p>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a asp-action="Details" asp-route-id="@discipline.Id" class="btn btn-primary btn-sm">
+                        <i class="fas fa-eye"></i> Перейти
+                    </a>
+                    <a asp-action="Edit" asp-route-id="@discipline.Id" class="btn btn-warning btn-sm">
+                        <i class="fas fa-edit"></i> Настроить
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info text-center">
+        <i class="fas fa-info-circle"></i> У вас пока нет дисциплин.
+    </div>
+}

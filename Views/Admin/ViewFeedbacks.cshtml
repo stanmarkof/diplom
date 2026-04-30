@@ -1,0 +1,61 @@
+﻿@model List<diplom.Models.Feedback>
+
+@{
+    ViewData["Title"] = "Обратная связь";
+}
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="mb-0"><i class="fas fa-comment-dots"></i> Обратная связь от пользователей</h3>
+    </div>
+    <div class="card-body">
+        @if (!Model.Any())
+        {
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle"></i> Нет отзывов.
+            </div>
+        }
+        else
+        {
+            <div class="row">
+                @foreach (var feedback in Model)
+                {
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <strong><i class="fas fa-user"></i> @feedback.User?.FullName</strong>
+                                        <small class="text-muted ms-2">@feedback.CreatedAt.ToString("dd.MM.yyyy HH:mm")</small>
+                                    </div>
+                                    @if (feedback.Rating.HasValue)
+                                    {
+                                        <div class="text-warning">
+                                            @for (int i = 0; i < feedback.Rating.Value; i++)
+                                            {
+                                                <i class="fas fa-star"></i>
+                                            }
+                                            @for (int i = feedback.Rating.Value; i < 5; i++)
+                                            {
+                                                <i class="far fa-star"></i>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                                <p class="mt-2">@feedback.Message</p>
+                            </div>
+                            <div class="card-footer">
+                                <form asp-action="DeleteFeedback" method="post" class="d-inline">
+                                    <input type="hidden" name="id" value="@feedback.Id" />
+                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Удалить этот отзыв?')">
+                                        <i class="fas fa-trash"></i> Удалить
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

@@ -1,0 +1,145 @@
+﻿@model List<diplom.Models.Course>
+
+@{
+    ViewData["Title"] = "Управление курсами";
+}
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="mb-0"><i class="fas fa-graduation-cap"></i> Управление курсами</h3>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createModal">
+            <i class="fas fa-plus"></i> Создать курс
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Код</th>
+                        <th>Название курса</th>
+                        <th>Срок обучения</th>
+                        <th>Дисциплин</th>
+                        <th>Групп</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var course in Model)
+                    {
+                        <tr>
+                            <td>@course.Id</td>
+                            <td>@course.Code</td>
+                            <td>@course.Name</td>
+                            <td>@course.DurationYears год</td>
+                            <td>@course.Disciplines?.Count</td>
+                            <td>@course.StudentGroups?.Count</td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#editModal@(course.Id)">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <a asp-action="ManageCourseGroups" asp-route-courseId="@course.Id" class="btn btn-sm btn-secondary">
+                                    <i class="fas fa-users"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal@(course.Id)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+
+                        <!-- Модальное окно редактирования -->
+                        <div class="modal fade" id="editModal@(course.Id)" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <form asp-action="EditCourse" method="post">
+                                        <input type="hidden" name="Id" value="@course.Id" />
+                                        <div class="modal-header bg-info text-white">
+                                            <h5 class="modal-title">Редактирование курса</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="mb-3">
+                                                <label class="form-label">Код курса</label>
+                                                <input type="text" name="Code" class="form-control" value="@course.Code" required />
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Название курса</label>
+                                                <input type="text" name="Name" class="form-control" value="@course.Name" required />
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Срок обучения (лет)</label>
+                                                <input type="number" name="DurationYears" class="form-control" value="@course.DurationYears" required />
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                            <button type="submit" class="btn btn-info">Сохранить</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Модальное окно удаления -->
+                        <div class="modal fade" id="deleteModal@(course.Id)" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <form asp-action="DeleteCourse" method="post">
+                                        <input type="hidden" name="id" value="@course.Id" />
+                                        <div class="modal-header bg-danger text-white">
+                                            <h5 class="modal-title">Удаление курса</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p>Вы уверены, что хотите удалить курс <strong>@course.Name</strong>?</p>
+                                            <div class="alert alert-warning">
+                                                <i class="fas fa-exclamation-triangle"></i> Все связанные дисциплины также будут удалены!
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                            <button type="submit" class="btn btn-danger">Удалить</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно создания -->
+<div class="modal fade" id="createModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="CreateCourse" method="post">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Создание курса</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Код курса</label>
+                        <input type="text" name="Code" class="form-control" placeholder="09.03.02" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Название курса</label>
+                        <input type="text" name="Name" class="form-control" placeholder="Информационные системы" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Срок обучения (лет)</label>
+                        <input type="number" name="DurationYears" class="form-control" value="4" required />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Создать</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
