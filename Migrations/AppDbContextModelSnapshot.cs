@@ -37,6 +37,52 @@ namespace diplom.Migrations
                     b.ToTable("DisciplineGroupAccess", (string)null);
                 });
 
+            modelBuilder.Entity("Material", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("DisciplineId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FilePath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FileType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsIndexed")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsVisible")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("SectionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DisciplineId");
+
+                    b.HasIndex("SectionId");
+
+                    b.ToTable("Materials");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<int>", b =>
                 {
                     b.Property<int>("Id")
@@ -168,6 +214,51 @@ namespace diplom.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
+                });
+
+            modelBuilder.Entity("Test", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("Deadline")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("DisciplineId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsPublished")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsVisible")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MaxScore")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SectionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DisciplineId");
+
+                    b.HasIndex("SectionId");
+
+                    b.ToTable("Tests");
                 });
 
             modelBuilder.Entity("diplom.Models.AppSetting", b =>
@@ -396,41 +487,6 @@ namespace diplom.Migrations
                     b.ToTable("Feedbacks");
                 });
 
-            modelBuilder.Entity("diplom.Models.Material", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("DisciplineId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("FilePath")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FileType")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("UploadedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DisciplineId");
-
-                    b.ToTable("Materials");
-                });
-
             modelBuilder.Entity("diplom.Models.Question", b =>
                 {
                     b.Property<int>("Id")
@@ -483,12 +539,18 @@ namespace diplom.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("DisciplineId")
+                        .HasColumnType("int");
+
                     b.Property<int>("DocumentId")
                         .HasColumnType("int");
 
                     b.Property<string>("Embedding")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("MaterialId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Text")
                         .IsRequired()
@@ -579,6 +641,34 @@ namespace diplom.Migrations
                     b.ToTable("RagQueryLogs");
                 });
 
+            modelBuilder.Entity("diplom.Models.Section", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("DisciplineId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DisciplineId");
+
+                    b.ToTable("Sections");
+                });
+
             modelBuilder.Entity("diplom.Models.StudentGroup", b =>
                 {
                     b.Property<int>("Id")
@@ -602,43 +692,6 @@ namespace diplom.Migrations
                     b.HasIndex("CourseId");
 
                     b.ToTable("StudentGroups");
-                });
-
-            modelBuilder.Entity("diplom.Models.Test", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime?>("Deadline")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("DisciplineId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("DurationMinutes")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("IsPublished")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("MaxScore")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DisciplineId");
-
-                    b.ToTable("Tests");
                 });
 
             modelBuilder.Entity("diplom.Models.TestResult", b =>
@@ -766,6 +819,21 @@ namespace diplom.Migrations
                     b.UseTphMappingStrategy();
                 });
 
+            modelBuilder.Entity("Student", b =>
+                {
+                    b.HasBaseType("diplom.Models.User");
+
+                    b.Property<int?>("StudentGroupId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StudentId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasIndex("StudentGroupId");
+
+                    b.HasDiscriminator().HasValue("Student");
+                });
+
             modelBuilder.Entity("diplom.Models.Admin", b =>
                 {
                     b.HasBaseType("diplom.Models.User");
@@ -789,21 +857,6 @@ namespace diplom.Migrations
                     b.HasDiscriminator().HasValue("Lecturer");
                 });
 
-            modelBuilder.Entity("diplom.Models.Student", b =>
-                {
-                    b.HasBaseType("diplom.Models.User");
-
-                    b.Property<int?>("StudentGroupId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("StudentId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasIndex("StudentGroupId");
-
-                    b.HasDiscriminator().HasValue("Student");
-                });
-
             modelBuilder.Entity("DisciplineStudentGroup", b =>
                 {
                     b.HasOne("diplom.Models.Discipline", null)
@@ -817,6 +870,24 @@ namespace diplom.Migrations
                         .HasForeignKey("OpenGroupsId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Material", b =>
+                {
+                    b.HasOne("diplom.Models.Discipline", "Discipline")
+                        .WithMany("Materials")
+                        .HasForeignKey("DisciplineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("diplom.Models.Section", "Section")
+                        .WithMany("Materials")
+                        .HasForeignKey("SectionId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.Navigation("Discipline");
+
+                    b.Navigation("Section");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>
@@ -868,6 +939,24 @@ namespace diplom.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Test", b =>
+                {
+                    b.HasOne("diplom.Models.Discipline", "Discipline")
+                        .WithMany("Tests")
+                        .HasForeignKey("DisciplineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("diplom.Models.Section", "Section")
+                        .WithMany("Tests")
+                        .HasForeignKey("SectionId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.Navigation("Discipline");
+
+                    b.Navigation("Section");
                 });
 
             modelBuilder.Entity("diplom.Models.ChatDialog", b =>
@@ -960,20 +1049,9 @@ namespace diplom.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("diplom.Models.Material", b =>
-                {
-                    b.HasOne("diplom.Models.Discipline", "Discipline")
-                        .WithMany("Materials")
-                        .HasForeignKey("DisciplineId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Discipline");
-                });
-
             modelBuilder.Entity("diplom.Models.Question", b =>
                 {
-                    b.HasOne("diplom.Models.Test", "Test")
+                    b.HasOne("Test", "Test")
                         .WithMany("Questions")
                         .HasForeignKey("TestId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1001,7 +1079,7 @@ namespace diplom.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("diplom.Models.Material", "Material")
+                    b.HasOne("Material", "Material")
                         .WithOne("RagDocument")
                         .HasForeignKey("diplom.Models.RagDocument", "MaterialId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -1022,6 +1100,17 @@ namespace diplom.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("diplom.Models.Section", b =>
+                {
+                    b.HasOne("diplom.Models.Discipline", "Discipline")
+                        .WithMany("Sections")
+                        .HasForeignKey("DisciplineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Discipline");
+                });
+
             modelBuilder.Entity("diplom.Models.StudentGroup", b =>
                 {
                     b.HasOne("diplom.Models.Course", "Course")
@@ -1033,26 +1122,15 @@ namespace diplom.Migrations
                     b.Navigation("Course");
                 });
 
-            modelBuilder.Entity("diplom.Models.Test", b =>
-                {
-                    b.HasOne("diplom.Models.Discipline", "Discipline")
-                        .WithMany("Tests")
-                        .HasForeignKey("DisciplineId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Discipline");
-                });
-
             modelBuilder.Entity("diplom.Models.TestResult", b =>
                 {
-                    b.HasOne("diplom.Models.Student", "Student")
+                    b.HasOne("Student", "Student")
                         .WithMany("TestResults")
                         .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("diplom.Models.Test", "Test")
+                    b.HasOne("Test", "Test")
                         .WithMany("TestResults")
                         .HasForeignKey("TestId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -1063,7 +1141,7 @@ namespace diplom.Migrations
                     b.Navigation("Test");
                 });
 
-            modelBuilder.Entity("diplom.Models.Student", b =>
+            modelBuilder.Entity("Student", b =>
                 {
                     b.HasOne("diplom.Models.StudentGroup", "StudentGroup")
                         .WithMany("Students")
@@ -1071,6 +1149,18 @@ namespace diplom.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("StudentGroup");
+                });
+
+            modelBuilder.Entity("Material", b =>
+                {
+                    b.Navigation("RagDocument");
+                });
+
+            modelBuilder.Entity("Test", b =>
+                {
+                    b.Navigation("Questions");
+
+                    b.Navigation("TestResults");
                 });
 
             modelBuilder.Entity("diplom.Models.Course", b =>
@@ -1086,12 +1176,9 @@ namespace diplom.Migrations
 
                     b.Navigation("Materials");
 
-                    b.Navigation("Tests");
-                });
+                    b.Navigation("Sections");
 
-            modelBuilder.Entity("diplom.Models.Material", b =>
-                {
-                    b.Navigation("RagDocument");
+                    b.Navigation("Tests");
                 });
 
             modelBuilder.Entity("diplom.Models.RagDocument", b =>
@@ -1099,26 +1186,26 @@ namespace diplom.Migrations
                     b.Navigation("RagChunks");
                 });
 
+            modelBuilder.Entity("diplom.Models.Section", b =>
+                {
+                    b.Navigation("Materials");
+
+                    b.Navigation("Tests");
+                });
+
             modelBuilder.Entity("diplom.Models.StudentGroup", b =>
                 {
                     b.Navigation("Students");
                 });
 
-            modelBuilder.Entity("diplom.Models.Test", b =>
+            modelBuilder.Entity("Student", b =>
                 {
-                    b.Navigation("Questions");
-
                     b.Navigation("TestResults");
                 });
 
             modelBuilder.Entity("diplom.Models.Lecturer", b =>
                 {
                     b.Navigation("DisciplineLecturers");
-                });
-
-            modelBuilder.Entity("diplom.Models.Student", b =>
-                {
-                    b.Navigation("TestResults");
                 });
 #pragma warning restore 612, 618
         }

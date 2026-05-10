@@ -2,11 +2,19 @@
 using Microsoft.EntityFrameworkCore;
 using diplom.Data;
 using diplom.Models;
+using diplom.Services;
+using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+// Добавьте это после builder.Services.AddControllersWithViews();
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 104857600; // 100 MB
+});
 
 // Добавляем DbContext с подключением к SQL Server
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -15,20 +23,18 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Добавляем Identity с нашими моделями
 builder.Services.AddIdentity<User, IdentityRole<int>>(options =>
 {
-    // Настройки паролей (можно настроить под свои требования)
+    // Настройки паролей
     options.Password.RequireDigit = false;
     options.Password.RequiredLength = 6;
     options.Password.RequireNonAlphanumeric = false;
     options.Password.RequireUppercase = false;
     options.Password.RequireLowercase = false;
-
-    // Настройки пользователей
     options.User.RequireUniqueEmail = true;
 })
 .AddEntityFrameworkStores<AppDbContext>()
 .AddDefaultTokenProviders();
 
-// Настройки аутентификации (опционально)
+// Настройки аутентификации
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/Account/Login";
@@ -38,9 +44,13 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.SlidingExpiration = true;
 });
 
+// Временно закомментируйте RAG сервис
+// builder.Services.AddScoped<IRagService, RagService>();
+//builder.Services.AddScoped<IRagService, RagServiceDummy>();
+
 var app = builder.Build();
 
-//зараннее инициализация 
+// Инициализация базы данных
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -55,7 +65,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Configure the HTTP request pipeline.
+// Configure the HTTP request pipeline
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -64,11 +74,8 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-
 app.UseRouting();
-
-// ВАЖНО: порядок важен!
-app.UseAuthentication();  // ← Добавить эту строку
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(

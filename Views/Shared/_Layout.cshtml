@@ -39,14 +39,6 @@
             </div>
 
             <div class="d-flex align-items-center gap-3">
-                <!-- Переключатель темы -->
-                <div class="theme-toggle">
-                    <button id="themeToggle" class="btn btn-secondary" style="background: transparent; border: 1px solid var(--border-color); border-radius: 2rem; padding: 0.5rem 1rem;">
-                        <i id="themeIcon" class="fas fa-moon"></i>
-                        <span id="themeText" class="ms-2 d-none d-sm-inline">Тёмная</span>
-                    </button>
-                </div>
-
                 <!-- User Dropdown -->
                 <div class="user-dropdown dropdown">
                     <a href="#" class="dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" id="userDropdown">
@@ -104,50 +96,42 @@
     {
         <div class="sidebar" id="sidebar">
             <ul class="sidebar-menu">
-
-
                 @if (isAdmin)
                 {
                     <div class="sidebar-divider"></div>
                     <div class="sidebar-title">Управление</div>
                     <li class="sidebar-item">
-                        <a class="sidebar-link @(ViewContext.RouteData.Values["action"]?.ToString() == "AllUsers" ? "active" : "")"
-                           asp-controller="Admin" asp-action="AllUsers">
+                        <a class="sidebar-link" asp-controller="Admin" asp-action="AllUsers">
                             <i class="fas fa-users"></i>
                             <span>Пользователи</span>
                         </a>
                     </li>
                     <li class="sidebar-item">
-                        <a class="sidebar-link @(ViewContext.RouteData.Values["action"]?.ToString() == "ManageGroups" ? "active" : "")"
-                           asp-controller="Admin" asp-action="ManageGroups">
+                        <a class="sidebar-link" asp-controller="Admin" asp-action="ManageGroups">
                             <i class="fas fa-layer-group"></i>
                             <span>Группы</span>
                         </a>
                     </li>
                     <li class="sidebar-item">
-                        <a class="sidebar-link @(ViewContext.RouteData.Values["action"]?.ToString() == "ManageCourses" ? "active" : "")"
-                           asp-controller="Admin" asp-action="ManageCourses">
+                        <a class="sidebar-link" asp-controller="Admin" asp-action="ManageCourses">
                             <i class="fas fa-graduation-cap"></i>
                             <span>Курсы</span>
                         </a>
                     </li>
                     <li class="sidebar-item">
-                        <a class="sidebar-link @(ViewContext.RouteData.Values["action"]?.ToString() == "ManageDisciplines" ? "active" : "")"
-                           asp-controller="Admin" asp-action="ManageDisciplines">
+                        <a class="sidebar-link" asp-controller="Admin" asp-action="ManageDisciplines">
                             <i class="fas fa-book-open"></i>
                             <span>Дисциплины</span>
                         </a>
                     </li>
                     <li class="sidebar-item">
-                        <a class="sidebar-link @(ViewContext.RouteData.Values["action"]?.ToString() == "CreateLecturer" ? "active" : "")"
-                           asp-controller="Admin" asp-action="CreateLecturer">
+                        <a class="sidebar-link" asp-controller="Admin" asp-action="CreateLecturer">
                             <i class="fas fa-chalkboard-teacher"></i>
                             <span>Создать преподавателя</span>
                         </a>
                     </li>
                     <li class="sidebar-item">
-                        <a class="sidebar-link @(ViewContext.RouteData.Values["action"]?.ToString() == "CreateAdmin" ? "active" : "")"
-                           asp-controller="Admin" asp-action="CreateAdmin">
+                        <a class="sidebar-link" asp-controller="Admin" asp-action="CreateAdmin">
                             <i class="fas fa-user-shield"></i>
                             <span>Создать администратора</span>
                         </a>
@@ -155,8 +139,7 @@
                     <div class="sidebar-divider"></div>
                     <div class="sidebar-title">Настройки</div>
                     <li class="sidebar-item">
-                        <a class="sidebar-link @(ViewContext.RouteData.Values["action"]?.ToString() == "ChangeVerificationCode" ? "active" : "")"
-                           asp-controller="Admin" asp-action="ChangeVerificationCode">
+                        <a class="sidebar-link" asp-controller="Admin" asp-action="ChangeVerificationCode">
                             <i class="fas fa-key"></i>
                             <span>Код регистрации</span>
                         </a>
@@ -164,8 +147,7 @@
                     <div class="sidebar-divider"></div>
                     <div class="sidebar-title">Информация</div>
                     <li class="sidebar-item">
-                        <a class="sidebar-link @(ViewContext.RouteData.Values["action"]?.ToString() == "ViewFeedbacks" ? "active" : "")"
-                           asp-controller="Admin" asp-action="ViewFeedbacks">
+                        <a class="sidebar-link" asp-controller="Admin" asp-action="ViewFeedbacks">
                             <i class="fas fa-comment-dots"></i>
                             <span>Обратная связь</span>
                         </a>
@@ -177,8 +159,7 @@
                     <div class="sidebar-divider"></div>
                     <div class="sidebar-title">Преподавателю</div>
                     <li class="sidebar-item">
-                        <a class="sidebar-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Lecturer" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")"
-                           asp-controller="Lecturer" asp-action="Index">
+                        <a class="sidebar-link" asp-controller="Lecturer" asp-action="Index">
                             <i class="fas fa-book-open"></i>
                             <span>Мои дисциплины</span>
                         </a>
@@ -201,28 +182,16 @@
                             <span>Мои тесты</span>
                         </a>
                     </li>
-                    <li class="sidebar-item">
-                        <a class="sidebar-link" asp-controller="Chat" asp-action="Index">
-                            <i class="fas fa-comments"></i>
-                            <span>Чат</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a class="sidebar-link" asp-controller="Bot" asp-action="Index">
-                            <i class="fas fa-robot"></i>
-                            <span>AI Помощник</span>
-                        </a>
-                    </li>
                 }
                 else if (isStudent && !hasGroup)
                 {
                     <div class="sidebar-divider"></div>
                     <div class="sidebar-title">Студенту</div>
                     <li class="sidebar-item">
-                        <a class="sidebar-link text-muted" href="#" style="cursor: default;" onclick="return false;">
+                        <span class="sidebar-link text-muted">
                             <i class="fas fa-clock"></i>
                             <span>Ожидание группы</span>
-                        </a>
+                        </span>
                     </li>
                 }
 
@@ -267,188 +236,199 @@
         </div>
     </footer>
 
+    <!-- Виджеты -->
+    @if (User.Identity.IsAuthenticated)
+    {
+        <!-- Виджет AI Бота -->
+        <div class="bot-widget">
+            <button id="botToggleBtn" class="bot-toggle-btn" title="Задать вопрос AI помощнику">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm0 13c-2.33 0-4.31-1.46-5.11-3.5h10.22c-.8 2.04-2.78 3.5-5.11 3.5z" fill="currentColor" />
+                </svg>
+            </button>
+
+            <div id="botWindow" class="bot-window">
+                <div class="bot-container">
+                    <div class="bot-header">
+                        <div class="bot-header-info">
+                            <div class="bot-avatar">🤖</div>
+                            <div>
+                                <h5>AI Помощник</h5>
+                                <small>Онлайн</small>
+                            </div>
+                        </div>
+                        <button id="botCloseBtn" class="bot-close-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 6L6 18M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="botMessages" class="bot-messages">
+                        <div class="bot-message bot">
+                            <div class="message-bubble">
+                                Привет! Я AI-помощник. Задавайте вопросы по учебным материалам, я постараюсь помочь!
+                            </div>
+                            <div class="message-time">Сейчас</div>
+                        </div>
+                    </div>
+                    <div class="bot-input-container">
+                        <input type="text" id="botInput" class="bot-input" placeholder="Напишите вопрос..." />
+                        <button id="botSendBtn" class="bot-send-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Виджет чата (мессенджер) -->
+        <div class="chat-widget">
+            <button id="chatToggleBtn" class="chat-toggle-btn" title="Открыть чат">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="currentColor" />
+                </svg>
+            </button>
+        </div>
+    }
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
 
     <script>
-    // Мобильное меню
-    const menuToggle = document.getElementById('mobileMenuToggle');
-    const sidebar = document.getElementById('sidebar');
-    const mainContent = document.querySelector('.main-content');
-    const footer = document.querySelector('footer');
+        // Мобильное меню
+        const menuToggle = document.getElementById('mobileMenuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.querySelector('.main-content');
+        const footer = document.querySelector('footer');
 
-    // Функция для обновления отступа контента
-    function updateContentMargin() {
-        if (!sidebar) return;
-        
-        // Проверяем, находится ли меню в состоянии мобильного открытия
-        const isMobileOpen = sidebar.classList.contains('mobile-open');
-        
-        // Проверяем, наведена ли мышь на меню (только для десктопа)
-        const isHovered = sidebar.matches(':hover') && window.innerWidth > 768;
-        
-        if (window.innerWidth > 768) {
-            // Десктоп: отступ зависит от состояния наведения
-            const marginWidth = isHovered ? 280 : 70;
-            if (mainContent) mainContent.style.marginLeft = marginWidth + 'px';
-            if (footer) footer.style.marginLeft = marginWidth + 'px';
-        } else {
-            // Мобилка: отступ только если меню открыто
-            const marginWidth = isMobileOpen ? 280 : 0;
-            if (mainContent) mainContent.style.marginLeft = marginWidth + 'px';
-            if (footer) footer.style.marginLeft = marginWidth + 'px';
+        function updateContentMargin() {
+            if (!sidebar) return;
+            const isMobileOpen = sidebar.classList.contains('mobile-open');
+            const isHovered = sidebar.matches(':hover') && window.innerWidth > 768;
+
+            if (window.innerWidth > 768) {
+                const marginWidth = isHovered ? 280 : 70;
+                if (mainContent) mainContent.style.marginLeft = marginWidth + 'px';
+                if (footer) footer.style.marginLeft = marginWidth + 'px';
+            } else {
+                const marginWidth = isMobileOpen ? 280 : 0;
+                if (mainContent) mainContent.style.marginLeft = marginWidth + 'px';
+                if (footer) footer.style.marginLeft = marginWidth + 'px';
+            }
         }
-    }
 
-    if (sidebar) {
-        // Обработчики для наведения мыши
-        sidebar.addEventListener('mouseenter', function() {
-            if (window.innerWidth > 768) {
+        if (sidebar) {
+            sidebar.addEventListener('mouseenter', () => window.innerWidth > 768 && updateContentMargin());
+            sidebar.addEventListener('mouseleave', () => window.innerWidth > 768 && updateContentMargin());
+
+            const observer = new MutationObserver(() => updateContentMargin());
+            observer.observe(sidebar, { attributes: true });
+        }
+
+        if (menuToggle) {
+            menuToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('mobile-open');
                 updateContentMargin();
-            }
-        });
-        
-        sidebar.addEventListener('mouseleave', function() {
-            if (window.innerWidth > 768) {
-                updateContentMargin();
-            }
-        });
-        
-        // Следим за изменениями класса mobile-open
-        const observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                if (mutation.attributeName === 'class') {
+            });
+        }
+
+        document.querySelectorAll('.sidebar-link').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth < 768) {
+                    sidebar.classList.remove('mobile-open');
                     updateContentMargin();
                 }
             });
         });
-        
-        observer.observe(sidebar, { attributes: true });
-    }
 
-    if (menuToggle) {
-        menuToggle.addEventListener('click', function () {
-            sidebar.classList.toggle('mobile-open');
-            updateContentMargin();
-        });
-    }
+        updateContentMargin();
 
-    // Закрытие мобильного меню при клике на ссылку
-    const sidebarLinks = document.querySelectorAll('.sidebar-link');
-    sidebarLinks.forEach(link => {
-        link.addEventListener('click', () => {
-            if (window.innerWidth < 768) {
-                sidebar.classList.remove('mobile-open');
-                updateContentMargin();
+        // Бот-виджет
+        const botToggleBtn = document.getElementById('botToggleBtn');
+        const botCloseBtn = document.getElementById('botCloseBtn');
+        const botWindow = document.getElementById('botWindow');
+        const botMessages = document.getElementById('botMessages');
+        const botInput = document.getElementById('botInput');
+        const botSendBtn = document.getElementById('botSendBtn');
+        let isBotTyping = false;
+
+        if (botToggleBtn) {
+            botToggleBtn.addEventListener('click', () => botWindow.classList.add('active'));
+            botCloseBtn.addEventListener('click', () => botWindow.classList.remove('active'));
+        }
+
+        function addBotMessage(message, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `bot-message ${isUser ? 'user' : 'bot'}`;
+            const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+            messageDiv.innerHTML = `
+                    <div class="message-bubble">${escapeHtml(message).replace(/\n/g, '<br>')}</div>
+                    <div class="message-time">${time}</div>
+                `;
+            botMessages.appendChild(messageDiv);
+            botMessages.scrollTop = botMessages.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function sendBotMessage() {
+            const message = botInput.value.trim();
+            if (!message || isBotTyping) return;
+            botInput.value = '';
+            addBotMessage(message, true);
+            isBotTyping = true;
+
+            try {
+                const response = await fetch('/api/bot/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: message })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    addBotMessage(data.answer, false);
+                } else {
+                    addBotMessage('Извините, произошла ошибка. Попробуйте позже.', false);
+                }
+            } catch (error) {
+                console.error('Bot error:', error);
+                addBotMessage('Не удалось подключиться к боту.', false);
+            } finally {
+                isBotTyping = false;
+            }
+        }
+
+        if (botSendBtn) botSendBtn.addEventListener('click', sendBotMessage);
+        if (botInput) botInput.addEventListener('keypress', (e) => e.key === 'Enter' && sendBotMessage());
+
+        // Чат-виджет (просто кнопка для открытия мессенджера)
+        const chatToggleBtn = document.getElementById('chatToggleBtn');
+        if (chatToggleBtn) {
+            chatToggleBtn.addEventListener('click', () => {
+                window.location.href = '/Chat/Index';
+            });
+        }
+
+        // Обработка дропдауна пользователя
+        document.addEventListener('DOMContentLoaded', () => {
+            const dropdownToggle = document.querySelector('.user-dropdown .dropdown-toggle');
+            if (dropdownToggle) {
+                dropdownToggle.addEventListener('click', function () {
+                    setTimeout(() => {
+                        const isOpen = document.querySelector('.user-dropdown.show');
+                        this.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                    }, 10);
+                });
             }
         });
-    });
-    
-    // Предотвращение клика для неактивных ссылок
-    const inactiveLinks = document.querySelectorAll('.sidebar-link.text-muted');
-    inactiveLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            return false;
-        });
-    });
-    
-    // Обновляем отступ при загрузке и изменении размера окна
-    window.addEventListener('resize', function() {
-        updateContentMargin();
-    });
-    
-    // Инициализация
-    updateContentMargin();
-
-    // ==================== ТЕМНАЯ / СВЕТЛАЯ ТЕМА ====================
-  /*  const themeToggle = document.getElementById('themeToggle');
-    const themeIcon = document.getElementById('themeIcon');
-    const themeText = document.getElementById('themeText');
-
-    let currentTheme = localStorage.getItem('theme') || 'dark';
-
-    function applyTheme(theme) {
-        const root = document.documentElement;
-
-        if (theme === 'light') {
-            root.style.setProperty('--bg-primary', '#f8f9fa');
-            root.style.setProperty('--bg-secondary', '#ffffff');
-            root.style.setProperty('--bg-card', '#ffffff');
-            root.style.setProperty('--bg-sidebar', '#f8f9fa');
-            root.style.setProperty('--text-primary', '#212529');
-            root.style.setProperty('--text-secondary', '#6c757d');
-            root.style.setProperty('--border-color', '#dee2e6');
-            root.style.setProperty('--accent-primary', '#667eea');
-            root.style.setProperty('--accent-secondary', '#764ba2');
-            root.style.setProperty('--accent-success', '#48bb78');
-            root.style.setProperty('--accent-danger', '#f56565');
-            root.style.setProperty('--accent-warning', '#ed8936');
-            root.style.setProperty('--accent-info', '#4299e1');
-
-            themeIcon.className = 'fas fa-sun';
-            themeText.textContent = 'Светлая';
-        } else {
-            root.style.setProperty('--bg-primary', '#0f0f1a');
-            root.style.setProperty('--bg-secondary', '#1a1a2e');
-            root.style.setProperty('--bg-card', '#16213e');
-            root.style.setProperty('--bg-sidebar', '#0a0a15');
-            root.style.setProperty('--text-primary', '#e0e0e0');
-            root.style.setProperty('--text-secondary', '#a0a0a0');
-            root.style.setProperty('--border-color', '#2d2d4a');
-            root.style.setProperty('--accent-primary', '#667eea');
-            root.style.setProperty('--accent-secondary', '#764ba2');
-            root.style.setProperty('--accent-success', '#48bb78');
-            root.style.setProperty('--accent-danger', '#f56565');
-            root.style.setProperty('--accent-warning', '#ed8936');
-            root.style.setProperty('--accent-info', '#4299e1');
-
-            themeIcon.className = 'fas fa-moon';
-            themeText.textContent = 'Тёмная';
-        }
-
-        localStorage.setItem('theme', theme);
-        currentTheme = theme;
-        
-        // Обновляем отступ после смены темы (для перерисовки)
-        setTimeout(updateContentMargin, 50);
-    } */
-
-    if (themeToggle) {
-        applyTheme(currentTheme);
-        themeToggle.addEventListener('click', function () {
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            applyTheme(newTheme);
-        });
-    }
-
-    // Обработка дропдауна пользователя
-    document.addEventListener('DOMContentLoaded', function () {
-        const userDropdown = document.querySelector('.user-dropdown');
-        const dropdownToggle = document.querySelector('.user-dropdown .dropdown-toggle');
-
-        if (dropdownToggle) {
-            dropdownToggle.addEventListener('keydown', function (e) {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    this.click();
-                }
-            });
-
-            dropdownToggle.addEventListener('click', function () {
-                setTimeout(() => {
-                    const isOpen = document.querySelector('.user-dropdown.show');
-                    if (isOpen) {
-                        dropdownToggle.setAttribute('aria-expanded', 'true');
-                    } else {
-                        dropdownToggle.setAttribute('aria-expanded', 'false');
-                    }
-                }, 10);
-            });
-        }
-    });
-</script>
+    </script>
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>

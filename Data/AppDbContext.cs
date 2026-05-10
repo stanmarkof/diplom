@@ -26,6 +26,8 @@ namespace diplom.Data
         public DbSet<RagQueryLog> RagQueryLogs { get; set; }
         public DbSet<ChatHistory> ChatHistories { get; set; }
 
+        public DbSet<Section> Sections { get; set; }
+
         public DbSet<DisciplineLecturer> DisciplineLecturers { get; set; }
 
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
@@ -172,6 +174,26 @@ namespace diplom.Data
             builder.Entity<DisciplineLecturer>()
                 .HasIndex(dl => new { dl.DisciplineId, dl.LecturerId })
                 .IsUnique();
+
+            builder.Entity<Section>()
+                .HasOne(s => s.Discipline)
+                .WithMany(d => d.Sections)
+                .HasForeignKey(s => s.DisciplineId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Связь Material с Section - удаляем каскадное удаление
+            builder.Entity<Material>()
+                .HasOne(m => m.Section)
+                .WithMany(s => s.Materials)
+                .HasForeignKey(m => m.SectionId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Связь Test с Section
+            builder.Entity<Test>()
+                .HasOne(t => t.Section)
+                .WithMany(s => s.Tests)
+                .HasForeignKey(t => t.SectionId)
+                .OnDelete(DeleteBehavior.NoAction);
         }
     }
 }

@@ -1,1 +1,55 @@
-[]
+[
+  {
+    "ContainingType": "diplom.Controllers.BotController",
+    "Method": "Ask",
+    "RelativePath": "api/Bot/ask",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "diplom.Controllers.BotRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "diplom.Controllers.FileUploadController",
+    "Method": "DeleteFile",
+    "RelativePath": "api/FileUpload/delete/{materialId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "materialId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "diplom.Controllers.FileUploadController",
+    "Method": "UploadFile",
+    "RelativePath": "api/FileUpload/upload",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "file",
+        "Type": "Microsoft.AspNetCore.Http.IFormFile",
+        "IsRequired": false
+      },
+      {
+        "Name": "materialId",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  }
+]

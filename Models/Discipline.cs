@@ -14,7 +14,7 @@
         public ICollection<Material> Materials { get; set; } = new List<Material>();
         public ICollection<Test> Tests { get; set; } = new List<Test>();
         public ICollection<StudentGroup> OpenGroups { get; set; } = new List<StudentGroup>();
-
+        public ICollection<Section> Sections { get; set; } = new List<Section>();
         // Связь с преподавателями (многие-ко-многим)
         public ICollection<DisciplineLecturer> DisciplineLecturers { get; set; } = new List<DisciplineLecturer>();
     }

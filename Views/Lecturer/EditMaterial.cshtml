@@ -1,0 +1,170 @@
+﻿@model diplom.Models.Material
+
+@{
+    ViewData["Title"] = "Редактирование материала";
+}
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="mb-0"><i class="fas fa-edit"></i> Редактирование материала</h3>
+        <a asp-action="Edit" asp-route-id="@Model.DisciplineId" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Назад к дисциплине
+        </a>
+    </div>
+    <div class="card-body">
+        <form asp-action="EditMaterial" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+
+            <div class="mb-3">
+                <label class="form-label">Название материала *</label>
+                <input type="text" name="title" class="form-control" value="@Model.Title" required />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Раздел</label>
+                <input type="text" class="form-control" value="@Model.Section?.Name" disabled />
+                <small class="text-muted">Раздел нельзя изменить</small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Текстовое содержимое</label>
+                <textarea name="content" class="form-control" rows="10">@Model.Content</textarea>
+            </div>
+
+            <div class="mb-3">
+                <div class="form-check form-switch">
+                    <input type="checkbox" class="form-check-input" name="isVisible" id="isVisible" value="true" @(Model.IsVisible ? "checked" : "") />
+                    <label class="form-check-label" for="isVisible">
+                        <i class="fas fa-eye"></i> Видим для студентов
+                    </label>
+                </div>
+                <input type="hidden" name="isVisible" value="false" />
+                <small class="text-muted">Если выключено, студенты не увидят этот материал</small>
+            </div>
+
+            <!-- Информация о файле -->
+            @if (!string.IsNullOrEmpty(Model.FilePath))
+            {
+                <div class="mb-3">
+                    <label class="form-label">Прикрепленный файл</label>
+                    <div class="input-group">
+                        <a href="@Model.FilePath" target="_blank" class="btn btn-outline-primary">
+                            <i class="fas fa-download"></i> Скачать файл
+                        </a>
+                        <button type="button" class="btn btn-outline-danger" onclick="deleteFile(@Model.Id)">
+                            <i class="fas fa-trash"></i> Удалить файл
+                        </button>
+                    </div>
+                    <small class="text-muted">Файл: @System.IO.Path.GetFileName(Model.FilePath)</small>
+                </div>
+            }
+            else
+            {
+                <div class="mb-3">
+                    <label class="form-label">Файл не прикреплен</label>
+                    <div>
+                        <button type="button" class="btn btn-primary" onclick="showUploadModal(@Model.Id, '@Model.Title')">
+                            <i class="fas fa-upload"></i> Загрузить файл
+                        </button>
+                    </div>
+                </div>
+            }
+
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                <a asp-action="Edit" asp-route-id="@Model.DisciplineId" class="btn btn-secondary">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Upload File -->
+<div class="modal fade" id="uploadFileModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-upload"></i> Загрузка файла</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="uploadMaterialId" />
+                <div class="mb-3">
+                    <label class="form-label">Материал</label>
+                    <input type="text" id="uploadMaterialTitle" class="form-control" disabled />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Файл *</label>
+                    <input type="file" id="uploadFile" class="form-control" accept=".txt,.pdf,.docx,.jpg,.png" />
+                    <small class="text-muted">Поддерживаются форматы: .txt, .pdf, .docx, .jpg, .png (макс. 10 MB)</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="confirmUploadBtn">Загрузить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showUploadModal(materialId, materialTitle) {
+        document.getElementById('uploadMaterialId').value = materialId;
+        document.getElementById('uploadMaterialTitle').value = materialTitle;
+        document.getElementById('uploadFile').value = '';
+        new bootstrap.Modal(document.getElementById('uploadFileModal')).show();
+    }
+
+    document.getElementById('confirmUploadBtn')?.addEventListener('click', async function () {
+        const materialId = document.getElementById('uploadMaterialId').value;
+        const file = document.getElementById('uploadFile').files[0];
+
+        if (!file) {
+            alert('Выберите файл');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('materialId', materialId);
+
+        try {
+            const response = await fetch('/api/fileupload/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            if (result.success) {
+                location.reload();
+            } else {
+                alert('Ошибка: ' + (result.error || 'Неизвестная ошибка'));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Произошла ошибка при загрузке файла');
+        }
+    });
+
+    function deleteFile(materialId) {
+        if (confirm('Вы уверены, что хотите удалить прикрепленный файл?')) {
+            fetch(`/Lecturer/DeleteMaterialFile/${materialId}`, {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Ошибка: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Произошла ошибка при удалении файла');
+                });
+        }
+    }
+</script>

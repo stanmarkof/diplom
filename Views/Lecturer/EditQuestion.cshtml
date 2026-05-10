@@ -1,0 +1,214 @@
+﻿@model diplom.Models.Question
+
+@{
+    ViewData["Title"] = "Редактирование вопроса";
+    var optionsList = string.IsNullOrEmpty(Model.OptionsJson) ? new List<string>() : System.Text.Json.JsonSerializer.Deserialize<List<string>>(Model.OptionsJson);
+    var isChoiceQuestion = optionsList != null && optionsList.Any();
+}
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="mb-0"><i class="fas fa-edit"></i> Редактирование вопроса</h3>
+        <a asp-action="EditTest" asp-route-id="@Model.TestId" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Назад к тесту
+        </a>
+    </div>
+    <div class="card-body">
+        <form asp-action="EditQuestion" method="post" id="questionForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+            <input type="hidden" name="optionsJson" id="optionsJson" value='@Model.OptionsJson' />
+
+            <div class="mb-3">
+                <label class="form-label">Текст вопроса *</label>
+                <textarea name="text" class="form-control" rows="3" required>@Model.Text</textarea>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Тип вопроса</label>
+                <div class="btn-group w-100" role="group">
+                    <button type="button" class="btn btn-outline-primary @(!isChoiceQuestion ? "active" : "")" id="openTypeBtn" onclick="setQuestionType('open')">Открытый вопрос</button>
+                    <button type="button" class="btn btn-outline-primary @(isChoiceQuestion ? "active" : "")" id="choiceTypeBtn" onclick="setQuestionType('choice')">С вариантами ответов</button>
+                </div>
+            </div>
+
+            <div id="openQuestionBlock" style="display: @(!isChoiceQuestion ? "block" : "none");">
+                <div class="mb-3">
+                    <label class="form-label">Правильный ответ</label>
+                    <textarea name="correctAnswerOpen" class="form-control" rows="2">@Model.CorrectAnswer</textarea>
+                    <small class="text-muted">Будет сравниваться с ответом студента (регистронезависимое сравнение)</small>
+                </div>
+            </div>
+
+            <div id="choiceQuestionBlock" style="display: @(isChoiceQuestion ? "block" : "none");">
+                <div class="mb-3">
+                    <label class="form-label">Варианты ответов</label>
+                    <div id="optionsList">
+                        @if (isChoiceQuestion && optionsList.Any())
+                        {
+                            foreach (var opt in optionsList)
+                            {
+                                <div class="input-group mb-2">
+                                    <input type="text" class="form-control option-input" value="@opt" placeholder="Вариант ответа" />
+                                    <button type="button" class="btn btn-danger" onclick="removeOption(this)">✕</button>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="input-group mb-2">
+                                <input type="text" class="form-control option-input" placeholder="Вариант ответа" />
+                                <button type="button" class="btn btn-danger" onclick="removeOption(this)">✕</button>
+                            </div>
+                        }
+                    </div>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="addOption()">
+                        <i class="fas fa-plus"></i> Добавить вариант
+                    </button>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Правильный вариант</label>
+                    <select id="correctOptionSelect" class="form-select">
+                        <option value="">-- Выберите правильный вариант --</option>
+                        @if (isChoiceQuestion && optionsList.Any())
+                        {
+                            foreach (var opt in optionsList)
+                            {
+                                <option value="@opt" selected="@(Model.CorrectAnswer == opt)">@opt</option>
+                            }
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Баллы за вопрос</label>
+                <input type="number" name="points" class="form-control" value="@Model.Points" min="1" required />
+                <small class="text-muted">Сколько баллов получит студент за правильный ответ</small>
+            </div>
+
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                <a asp-action="EditTest" asp-route-id="@Model.TestId" class="btn btn-secondary">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    let currentType = '@(isChoiceQuestion ? "choice" : "open")';
+
+    function setQuestionType(type) {
+        currentType = type;
+
+        if (type === 'open') {
+            document.getElementById('openQuestionBlock').style.display = 'block';
+            document.getElementById('choiceQuestionBlock').style.display = 'none';
+            document.getElementById('openTypeBtn').classList.add('active');
+            document.getElementById('choiceTypeBtn').classList.remove('active');
+        } else {
+            document.getElementById('openQuestionBlock').style.display = 'none';
+            document.getElementById('choiceQuestionBlock').style.display = 'block';
+            document.getElementById('openTypeBtn').classList.remove('active');
+            document.getElementById('choiceTypeBtn').classList.add('active');
+        }
+    }
+
+    function addOption() {
+        const optionsList = document.getElementById('optionsList');
+        const newOption = document.createElement('div');
+        newOption.className = 'input-group mb-2';
+        newOption.innerHTML = `
+                <input type="text" class="form-control option-input" placeholder="Вариант ответа" />
+                <button type="button" class="btn btn-danger" onclick="removeOption(this)">✕</button>
+            `;
+        optionsList.appendChild(newOption);
+        updateCorrectOptions();
+    }
+
+    function removeOption(btn) {
+        btn.closest('.input-group').remove();
+        updateCorrectOptions();
+    }
+
+    function updateCorrectOptions() {
+        const options = document.querySelectorAll('.option-input');
+        const select = document.getElementById('correctOptionSelect');
+        select.innerHTML = '<option value="">-- Выберите правильный вариант --</option>';
+
+        options.forEach((opt) => {
+            if (opt.value.trim()) {
+                const option = document.createElement('option');
+                option.value = opt.value.trim();
+                option.textContent = opt.value.trim();
+                select.appendChild(option);
+            }
+        });
+    }
+
+    document.addEventListener('input', function (e) {
+        if (e.target.classList.contains('option-input')) {
+            updateCorrectOptions();
+        }
+    });
+
+    document.getElementById('questionForm').addEventListener('submit', function (e) {
+        if (currentType === 'choice') {
+            const options = [];
+            document.querySelectorAll('.option-input').forEach(opt => {
+                if (opt.value.trim()) {
+                    options.push(opt.value.trim());
+                }
+            });
+
+            const correctSelect = document.getElementById('correctOptionSelect');
+            const correctAnswer = correctSelect.value;
+
+            if (options.length < 2) {
+                e.preventDefault();
+                alert('Добавьте минимум 2 варианта ответа');
+                return false;
+            }
+
+            if (!correctAnswer) {
+                e.preventDefault();
+                alert('Выберите правильный вариант ответа');
+                return false;
+            }
+
+            document.getElementById('optionsJson').value = JSON.stringify(options);
+
+            let correctAnswerInput = this.querySelector('input[name="correctAnswer"]');
+            if (!correctAnswerInput) {
+                correctAnswerInput = document.createElement('input');
+                correctAnswerInput.type = 'hidden';
+                correctAnswerInput.name = 'correctAnswer';
+                this.appendChild(correctAnswerInput);
+            }
+            correctAnswerInput.value = correctAnswer;
+        } else {
+            document.getElementById('optionsJson').value = '';
+
+            const correctAnswerText = document.querySelector('textarea[name="correctAnswerOpen"]').value;
+
+            let correctAnswerInput = this.querySelector('input[name="correctAnswer"]');
+            if (!correctAnswerInput) {
+                correctAnswerInput = document.createElement('input');
+                correctAnswerInput.type = 'hidden';
+                correctAnswerInput.name = 'correctAnswer';
+                this.appendChild(correctAnswerInput);
+            }
+            correctAnswerInput.value = correctAnswerText;
+        }
+    });
+
+    updateCorrectOptions();
+</script>
+
+<style>
+    .btn-group .btn.active {
+        background-color: #0d6efd;
+        color: white;
+    }
+</style>

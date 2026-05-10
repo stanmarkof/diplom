@@ -2,40 +2,300 @@
 
 @{
     ViewData["Title"] = "Мои дисциплины";
+
+    // Группируем дисциплины по курсам
+    var coursesWithDisciplines = Model
+        .Where(d => d.Course != null)
+        .GroupBy(d => new { d.Course.Id, d.Course.Code, d.Course.Name })
+        .OrderBy(g => g.Key.Code)
+        .ToList();
+
+    var coursesList = ViewBag.CoursesList as List<Course> ?? new List<Course>();
 }
 
-<div class="row">
-    @foreach (var discipline in Model)
-    {
-        <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card h-100">
-                <div class="card-body">
-                    <h5 class="card-title">@discipline.Name</h5>
-                    <p class="card-text text-muted">
-                        <small>
-                            <i class="fas fa-graduation-cap"></i> @discipline.Course?.Code
-                            <br />
-                            <i class="fas fa-calendar"></i> @discipline.CourseNumber курс, @discipline.Semester семестр
-                        </small>
-                    </p>
-                    <p class="card-text">@(discipline.Description?.Length > 100 ? discipline.Description.Substring(0, 100) + "..." : discipline.Description)</p>
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="mb-0"><i class="fas fa-book-open"></i> Мои дисциплины</h3>
+        <a asp-action="CreateDiscipline" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Создать дисциплину
+        </a>
+    </div>
+    <div class="card-body">
+        @if (coursesWithDisciplines.Any())
+        {
+            foreach (var courseGroup in coursesWithDisciplines)
+            {
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h4 class="mb-0">
+                                    <i class="fas fa-university"></i>
+                                    @courseGroup.Key.Code - @courseGroup.Key.Name
+                                </h4>
+                                <small class="text-muted">
+                                    <i class="fas fa-book-open"></i> Дисциплин в курсе: @courseGroup.Count()
+                                </small>
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#courseCollapse@(courseGroup.Key.Id)">
+                                <i class="fas fa-chevron-down"></i> Показать
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Убираем класс show, чтобы курсы были свернуты -->
+                    <div id="courseCollapse@(courseGroup.Key.Id)" class="collapse">
+                        <div class="card-body">
+                            <div class="row">
+                                @foreach (var discipline in courseGroup)
+                                {
+                                    <div class="col-md-6 col-lg-4 col-xl-3 mb-4">
+                                        <!-- Вся карточка кликабельна -->
+                                        <a asp-action="Details" asp-route-id="@discipline.Id" class="text-decoration-none">
+                                            <div class="card h-100 shadow-sm discipline-card">
+                                                <div class="card-body">
+                                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                                        <h5 class="card-title mb-0 text-dark">
+                                                            <i class="fas fa-book text-primary"></i>
+                                                            @discipline.Name
+                                                        </h5>
+                                                        <span class="badge bg-secondary">
+                                                            @discipline.CourseNumber курс, @discipline.Semester сем.
+                                                        </span>
+                                                    </div>
+
+                                                    <hr class="my-2" />
+
+                                                    <p class="card-text text-muted small">
+                                                        @if (!string.IsNullOrEmpty(discipline.Description))
+                                                        {
+                                                            @(discipline.Description.Length > 80 ? discipline.Description.Substring(0, 80) + "..." : discipline.Description)
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="fst-italic">Описание отсутствует</span>
+                                                        }
+                                                    </p>
+
+                                                    <div class="mt-2">
+                                                        <small class="text-muted">
+                                                            <i class="fas fa-chalkboard-teacher"></i>
+                                                            Преподаватели: @(discipline.DisciplineLecturers?.Count ?? 0)
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-footer bg-transparent">
-                    <a asp-action="Details" asp-route-id="@discipline.Id" class="btn btn-primary btn-sm">
-                        <i class="fas fa-eye"></i> Перейти
-                    </a>
-                    <a asp-action="Edit" asp-route-id="@discipline.Id" class="btn btn-warning btn-sm">
-                        <i class="fas fa-edit"></i> Настроить
-                    </a>
-                </div>
+            }
+        }
+        else
+        {
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle fa-2x mb-3 d-block"></i>
+                <h4>У вас пока нет дисциплин</h4>
+                <p class="mb-0">Создайте новую дисциплину или обратитесь к администратору.</p>
             </div>
-        </div>
-    }
+        }
+    </div>
 </div>
 
-@if (!Model.Any())
-{
-    <div class="alert alert-info text-center">
-        <i class="fas fa-info-circle"></i> У вас пока нет дисциплин.
+<!-- Модальное окно создания дисциплины -->
+<div class="modal fade" id="createDisciplineModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form asp-action="CreateDiscipline" method="post">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-plus"></i> Создание дисциплины</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Название дисциплины *</label>
+                        <input type="text" name="Name" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        <textarea name="Description" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Направление (курс) *</label>
+                        <select name="CourseId" id="createCourseId" class="form-select" required>
+                            <option value="">-- Выберите курс --</option>
+                            @foreach (var course in coursesList)
+                            {
+                                <option value="@course.Id" data-duration="@course.DurationYears">
+                                    @course.Code - @course.Name
+                                </option>
+                            }
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">Курс обучения *</label>
+                            <select name="CourseNumber" id="createCourseNumber" class="form-select" required disabled>
+                                <option value="">-- Сначала выберите курс направления --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Семестр *</label>
+                            <select name="Semester" id="createSemester" class="form-select" required disabled>
+                                <option value="">-- Сначала выберите курс обучения --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3 mt-3">
+                        <label class="form-label">Преподаватели</label>
+                        <select name="LecturerIds" multiple class="form-select" size="5">
+                            @foreach (var lecturer in ViewBag.Lecturers as SelectList)
+                            {
+                                <option value="@lecturer.Value">@lecturer.Text</option>
+                            }
+                        </select>
+                        <small class="text-muted">Удерживайте Ctrl для выбора нескольких преподавателей</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Создать</button>
+                </div>
+            </form>
+        </div>
     </div>
-}
+</div>
+
+<style>
+    .discipline-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        cursor: pointer;
+    }
+
+        .discipline-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+        }
+
+    .card-header .btn-outline-primary {
+        transition: all 0.3s ease;
+    }
+
+        .card-header .btn-outline-primary:hover {
+            transform: scale(1.05);
+        }
+
+    a.text-decoration-none:hover .discipline-card {
+        border-color: #0d6efd;
+    }
+</style>
+
+<script>
+    // Данные о курсах с их длительностью
+    const coursesData = {};
+
+    @foreach (var course in coursesList)
+    {
+        @:coursesData[@course.Id] = { name: "@course.Name", code: "@course.Code", duration: @course.DurationYears };
+    }
+
+        // Функция для генерации списка курсов обучения и семестров
+        function generateCourseNumbersAndSemesters(courseId, courseNumberSelect, semesterSelect, selectedCourseNumber = null, selectedSemester = null) {
+            const duration = coursesData[courseId]?.duration;
+
+            if (!duration || duration <= 0) {
+                courseNumberSelect.innerHTML = '<option value="">-- Некорректная длительность курса --</option>';
+                semesterSelect.innerHTML = '<option value="">-- Сначала выберите курс обучения --</option>';
+                semesterSelect.disabled = true;
+                return;
+            }
+
+            // Генерируем курсы обучения (1, 2, 3, 4...)
+            let courseNumbersHtml = '<option value="">-- Выберите курс обучения --</option>';
+            for (let i = 1; i <= duration; i++) {
+                const selected = selectedCourseNumber == i ? 'selected' : '';
+                courseNumbersHtml += `<option value="${i}" ${selected}>${i} курс</option>`;
+            }
+            courseNumberSelect.innerHTML = courseNumbersHtml;
+            courseNumberSelect.disabled = false;
+
+            // Функция для генерации семестров на основе выбранного курса обучения
+            function updateSemesters() {
+                const courseNumber = parseInt(courseNumberSelect.value);
+                if (isNaN(courseNumber) || courseNumber < 1 || courseNumber > duration) {
+                    semesterSelect.innerHTML = '<option value="">-- Выберите курс обучения --</option>';
+                    semesterSelect.disabled = true;
+                    return;
+                }
+
+                const firstSemester = courseNumber * 2 - 1;
+                const secondSemester = courseNumber * 2;
+
+                let semestersHtml = '<option value="">-- Выберите семестр --</option>';
+
+                if (firstSemester <= duration * 2) {
+                    const selectedFirst = selectedSemester == firstSemester ? 'selected' : '';
+                    semestersHtml += `<option value="${firstSemester}" ${selectedFirst}>${firstSemester} семестр</option>`;
+                }
+                if (secondSemester <= duration * 2) {
+                    const selectedSecond = selectedSemester == secondSemester ? 'selected' : '';
+                    semestersHtml += `<option value="${secondSemester}" ${selectedSecond}>${secondSemester} семестр</option>`;
+                }
+
+                semesterSelect.innerHTML = semestersHtml;
+                semesterSelect.disabled = false;
+            }
+
+            courseNumberSelect.onchange = updateSemesters;
+
+            if (selectedCourseNumber) {
+                updateSemesters();
+            }
+        }
+
+    // Для создания дисциплины
+    const createCourseSelect = document.getElementById('createCourseId');
+    const createCourseNumberSelect = document.getElementById('createCourseNumber');
+    const createSemesterSelect = document.getElementById('createSemester');
+
+    if (createCourseSelect) {
+        createCourseSelect.addEventListener('change', function () {
+            const courseId = parseInt(this.value);
+            if (courseId && coursesData[courseId]) {
+                generateCourseNumbersAndSemesters(courseId, createCourseNumberSelect, createSemesterSelect);
+            } else {
+                createCourseNumberSelect.innerHTML = '<option value="">-- Сначала выберите курс направления --</option>';
+                createCourseNumberSelect.disabled = true;
+                createSemesterSelect.innerHTML = '<option value="">-- Сначала выберите курс обучения --</option>';
+                createSemesterSelect.disabled = true;
+            }
+        });
+    }
+
+    // Анимация для иконки при сворачивании/разворачивании
+    document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(button => {
+        button.addEventListener('click', function () {
+            const icon = this.querySelector('i');
+            if (icon) {
+                if (this.getAttribute('aria-expanded') === 'true') {
+                    icon.style.transform = 'rotate(0deg)';
+                } else {
+                    icon.style.transform = 'rotate(180deg)';
+                }
+            }
+        });
+    });
+
+    // Автоматическое открытие модального окна создания если есть ошибка валидации
+    @if (TempData["OpenCreateModal"] != null && (bool)TempData["OpenCreateModal"])
+    {
+        <text>
+            $(document).ready(function () {
+                $('#createDisciplineModal').modal('show');
+            });
+        </text>
+    }
+</script>

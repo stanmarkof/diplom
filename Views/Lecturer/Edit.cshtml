@@ -2,13 +2,19 @@
 
 @{
     ViewData["Title"] = "Редактирование дисциплины";
+    var disciplineId = Model?.Id;
+    var sections = ViewBag.Sections as List<diplom.Models.Section> ?? new List<diplom.Models.Section>();
 }
 
 <div class="card">
-    <div class="card-header">
+    <div class="card-header d-flex justify-content-between align-items-center">
         <h3 class="mb-0"><i class="fas fa-edit"></i> Редактирование дисциплины</h3>
+        <a asp-action="Details" asp-route-id="@disciplineId" class="btn btn-secondary">
+            <i class="fas fa-eye"></i> Просмотр
+        </a>
     </div>
     <div class="card-body">
+        <!-- Основная информация -->
         <form asp-action="Edit" method="post">
             <input type="hidden" asp-for="Id" />
 
@@ -52,11 +58,11 @@
                 <div class="table-responsive">
                     <table class="table table-hover">
                         <thead>
-                            </tr>
+                            <tr>
                                 <th>Группа</th>
                                 <th>Студентов</th>
                                 <th>Доступ открыт</th>
-                            </thead>
+                        </thead>
                         <tbody>
                             @for (int i = 0; i < Model.Groups.Count; i++)
                             {
@@ -73,8 +79,8 @@
                                                 @(Model.Groups[i].IsOpen ? "Открыт" : "Закрыт")
                                             </label>
                                         </div>
-                                     </td>
-                                 </tr>
+                                    </td>
+                                </tr>
                             }
                         </tbody>
                     </table>
@@ -83,8 +89,422 @@
 
             <div class="mt-3">
                 <button type="submit" class="btn btn-primary">Сохранить изменения</button>
-                <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary">Отмена</a>
+                <a asp-action="Details" asp-route-id="@disciplineId" class="btn btn-secondary">Отмена</a>
             </div>
         </form>
     </div>
 </div>
+
+<!-- Разделы, материалы и тесты - редактирование с таблицами и кнопками -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h5><i class="fas fa-folder"></i> Разделы дисциплины (управление)</h5>
+    </div>
+    <div class="card-body">
+        <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addSectionModal">
+            <i class="fas fa-plus"></i> Добавить раздел
+        </button>
+
+        @if (sections.Any())
+        {
+            <div class="accordion" id="editSectionsAccordion">
+                @foreach (var sect in sections)
+                {
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#editCollapseSection@(sect.Id)">
+                                <div class="d-flex justify-content-between align-items-center w-100 me-3">
+                                    <span><i class="fas fa-folder-open"></i> @sect.Name</span>
+                                    <div>
+                                        <span class="badge bg-secondary me-2">@(sect.Materials?.Count ?? 0) материалов</span>
+                                        <span class="badge bg-secondary me-2">@(sect.Tests?.Count ?? 0) тестов</span>
+                                        <a asp-action="EditSection" asp-route-id="@sect.Id" class="btn btn-sm btn-warning me-1" onclick="event.stopPropagation()">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                       
+                                    </div>
+                                </div>
+                            </button>
+                        </h2>
+                        <div id="editCollapseSection@(sect.Id)" class="accordion-collapse collapse" data-bs-parent="#editSectionsAccordion">
+                            <div class="accordion-body">
+                                <!-- Материалы - таблица с действиями -->
+                                <div class="mb-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6><i class="fas fa-file-alt"></i> Материалы</h6>
+                                        <button type="button" class="btn btn-primary btn-sm" onclick="showAddMaterialModal(@sect.Id, '@sect.Name', @disciplineId)">
+                                            <i class="fas fa-plus"></i> Добавить материал
+                                        </button>
+                                    </div>
+
+                                    @if (sect.Materials != null && sect.Materials.Any())
+                                    {
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Название</th>
+                                                        <th>Дата</th>
+                                                        <th>Файл</th>
+                                                        <th>Действия</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var material in sect.Materials)
+                                                    {
+                                                        <tr>
+                                                            <td>@material.Title</td>
+                                                            <td>@material.UploadedAt.ToString("dd.MM.yyyy")</td>
+                                                            <td>
+                                                                @if (!string.IsNullOrEmpty(material.FilePath))
+                                                                {
+                                                                    <a href="@material.FilePath" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                                        <i class="fas fa-download"></i>
+                                                                    </a>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="text-muted">—</span>
+                                                                }
+                                                            </td>
+                                                            <td>
+                                                         
+                                                                <a asp-action="EditMaterial" asp-route-id="@material.Id" class="btn btn-sm btn-warning">
+                                                                    <i class="fas fa-edit"></i>
+                                                                </a>
+                                                                <button type="button" class="btn btn-sm btn-primary" onclick="showUploadModal(@material.Id, '@material.Title')">
+                                                                    <i class="fas fa-upload"></i>
+                                                                </button>
+                                                                <button type="button" class="btn btn-sm btn-danger" onclick="deleteMaterial(@material.Id)">
+                                                                    <i class="fas fa-trash"></i>
+                                                                </button>
+                                                            
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="alert alert-light text-center">Материалы отсутствуют</div>
+                                    }
+                                </div>
+
+                                <!-- Тесты - таблица с действиями -->
+                                <div>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6><i class="fas fa-tasks"></i> Тесты</h6>
+                                        <button type="button" class="btn btn-primary btn-sm" onclick="showAddTestModal(@sect.Id, '@sect.Name', @disciplineId)">
+                                            <i class="fas fa-plus"></i> Создать тест
+                                        </button>
+                                    </div>
+
+                                    @if (sect.Tests != null && sect.Tests.Any())
+                                    {
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Название</th>
+                                                        <th>Вопросов</th>
+                                                        <th>Макс. балл</th>
+                                                        <th>Дедлайн</th>
+                                                        <th>Действия</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var test in sect.Tests)
+                                                    {
+                                                        <tr>
+                                                            <td>@test.Title</td>
+                                                            <td>@(test.Questions?.Count ?? 0)</td>
+                                                            <td>@test.MaxScore</td>
+                                                            <td>
+                                                                @if (test.Deadline.HasValue)
+                                                                {
+                                                                    <span>@test.Deadline.Value.ToString("dd.MM.yyyy")</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="text-muted">—</span>
+                                                                }
+                                                            </td>
+                                                            <td>
+                                                                <a asp-action="EditTest" asp-route-id="@test.Id" class="btn btn-sm btn-warning">
+                                                                    <i class="fas fa-edit"></i>
+                                                                </a>
+                                                                <button type="button" class="btn btn-sm btn-danger" onclick="deleteTest(@test.Id)">
+                                                                    <i class="fas fa-trash"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="alert alert-light text-center">Тесты отсутствуют</div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-info text-center">Разделы отсутствуют. Создайте первый раздел!</div>
+        }
+    </div>
+</div>
+
+<!-- Модальное окно добавления раздела -->
+<div class="modal fade" id="addSectionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="AddSection" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="disciplineId" value="@disciplineId" />
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-folder"></i> Добавление раздела</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Название раздела *</label>
+                        <input type="text" name="name" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        <textarea name="description" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Создать раздел</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Add Material -->
+<div class="modal fade" id="addMaterialModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="AddMaterialToSection" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="disciplineId" id="materialDisciplineId" />
+                <input type="hidden" name="sectionId" id="materialSectionId" />
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-plus"></i> Добавление материала</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Раздел</label>
+                        <input type="text" id="materialSectionName" class="form-control" disabled />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Название материала *</label>
+                        <input type="text" name="title" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Текстовое содержимое</label>
+                        <textarea name="content" class="form-control" rows="5"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Add Test -->
+<div class="modal fade" id="addTestModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="AddTestToSection" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="disciplineId" id="testDisciplineId" />
+                <input type="hidden" name="sectionId" id="testSectionId" />
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-plus"></i> Создание теста</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Раздел</label>
+                        <input type="text" id="testSectionName" class="form-control" disabled />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Название теста *</label>
+                        <input type="text" name="title" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        <textarea name="description" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">Длительность (минут)</label>
+                            <input type="number" name="durationMinutes" class="form-control" value="30" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Максимальный балл</label>
+                            <input type="number" name="maxScore" class="form-control" value="100" />
+                        </div>
+                    </div>
+                    <div class="mb-3 mt-2">
+                        <label class="form-label">Дедлайн</label>
+                        <input type="datetime-local" name="deadline" class="form-control" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Создать</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Upload File -->
+<div class="modal fade" id="uploadFileModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-upload"></i> Загрузка файла</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="uploadMaterialId" />
+                <div class="mb-3">
+                    <label class="form-label">Материал</label>
+                    <input type="text" id="uploadMaterialTitle" class="form-control" disabled />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Файл *</label>
+                    <input type="file" id="uploadFile" class="form-control" accept=".txt,.pdf,.docx" />
+                    <small class="text-muted">Поддерживаются форматы: .txt, .pdf, .docx (макс. 10 MB)</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="confirmUploadBtn">Загрузить</button>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+<script>
+    function showAddMaterialModal(sectionId, sectionName, disciplineId) {
+        document.getElementById('materialSectionId').value = sectionId;
+        document.getElementById('materialSectionName').value = sectionName;
+        document.getElementById('materialDisciplineId').value = disciplineId;
+        new bootstrap.Modal(document.getElementById('addMaterialModal')).show();
+    }
+
+    function showAddTestModal(sectionId, sectionName, disciplineId) {
+        document.getElementById('testSectionId').value = sectionId;
+        document.getElementById('testSectionName').value = sectionName;
+        document.getElementById('testDisciplineId').value = disciplineId;
+        new bootstrap.Modal(document.getElementById('addTestModal')).show();
+    }
+
+    function showUploadModal(materialId, materialTitle) {
+        document.getElementById('uploadMaterialId').value = materialId;
+        document.getElementById('uploadMaterialTitle').value = materialTitle;
+        document.getElementById('uploadFile').value = '';
+        new bootstrap.Modal(document.getElementById('uploadFileModal')).show();
+    }
+
+    document.getElementById('confirmUploadBtn')?.addEventListener('click', async function () {
+        const materialId = document.getElementById('uploadMaterialId').value;
+        const file = document.getElementById('uploadFile').files[0];
+
+        if (!file) {
+            alert('Выберите файл');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('materialId', materialId);
+
+        try {
+            const response = await fetch('/api/fileupload/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            if (result.success) {
+                location.reload();
+            } else {
+                alert('Ошибка: ' + (result.error || 'Неизвестная ошибка'));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Произошла ошибка при загрузке файла');
+        }
+    });
+
+    function deleteMaterial(id) {
+        if (confirm('Вы уверены, что хотите удалить этот материал?')) {
+            fetch(`/api/material/${id}`, { method: 'DELETE' })
+                .then(response => {
+                    if (response.ok) location.reload();
+                    else alert('Ошибка при удалении');
+                })
+                .catch(error => console.error('Error:', error));
+        }
+    }
+
+    function editTest(id) {
+        window.location.href = `/Lecturer/EditTest/${id}`;
+    }
+
+    function deleteTest(id) {
+        if (confirm('Вы уверены, что хотите удалить этот тест?')) {
+            fetch(`/api/test/${id}`, { method: 'DELETE' })
+                .then(response => {
+                    if (response.ok) location.reload();
+                    else alert('Ошибка при удалении');
+                })
+                .catch(error => console.error('Error:', error));
+        }
+    }
+
+    function confirmDeleteSection(id, name) {
+        if (confirm(`Вы уверены, что хотите удалить раздел "${name}"?\n\nВсе материалы и тесты внутри раздела будут безвозвратно удалены!`)) {
+            fetch(`/Lecturer/DeleteSection/${id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Ошибка: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Произошла ошибка при удалении раздела');
+                });
+        }
+    }
+</script>

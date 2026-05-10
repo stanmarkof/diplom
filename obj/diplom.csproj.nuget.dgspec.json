@@ -66,6 +66,10 @@
               "suppressParent": "All",
               "target": "Package",
               "version": "[8.0.0, )"
+            },
+            "Xceed.Words.NET": {
+              "target": "Package",
+              "version": "[5.2.26166.7850, )"
             }
           },
           "imports": [
