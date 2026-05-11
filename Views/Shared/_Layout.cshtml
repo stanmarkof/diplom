@@ -385,6 +385,8 @@
             addBotMessage(message, true);
             isBotTyping = true;
 
+
+
             try {
                 const response = await fetch('/api/bot/ask', {
                     method: 'POST',

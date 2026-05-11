@@ -396,6 +396,13 @@
                     <input type="file" id="uploadFile" class="form-control" accept=".txt,.pdf,.docx" />
                     <small class="text-muted">Поддерживаются форматы: .txt, .pdf, .docx (макс. 10 MB)</small>
                 </div>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" name="isIndexed" class="form-check-input" id="indexCheckbox" value="true" />
+                    <label class="form-check-label" for="indexCheckbox">
+                        <i class="fas fa-robot"></i> Индексировать для AI-поиска
+                    </label>
+                    <small class="text-muted d-block mt-1">При включении материал будет доступен для поиска AI-помощником</small>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -431,6 +438,7 @@
     document.getElementById('confirmUploadBtn')?.addEventListener('click', async function () {
         const materialId = document.getElementById('uploadMaterialId').value;
         const file = document.getElementById('uploadFile').files[0];
+        const isIndexed = document.getElementById('indexCheckbox').checked; // Добавлено
 
         if (!file) {
             alert('Выберите файл');
@@ -440,6 +448,7 @@
         const formData = new FormData();
         formData.append('file', file);
         formData.append('materialId', materialId);
+        formData.append('isIndexed', isIndexed); // Добавлено
 
         try {
             const response = await fetch('/api/fileupload/upload', {
@@ -459,13 +468,30 @@
     });
 
     function deleteMaterial(id) {
-        if (confirm('Вы уверены, что хотите удалить этот материал?')) {
-            fetch(`/api/material/${id}`, { method: 'DELETE' })
-                .then(response => {
-                    if (response.ok) location.reload();
-                    else alert('Ошибка при удалении');
+        if (confirm('Вы уверены, что хотите удалить этот материал? Все файлы и индексы будут удалены.')) {
+            fetch(`/Lecturer/DeleteMaterial?id=${id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        if (data.redirect) {
+                            window.location.href = data.redirect;
+                        } else {
+                            location.reload();
+                        }
+                    } else {
+                        alert('Ошибка: ' + (data.message || 'Неизвестная ошибка'));
+                    }
                 })
-                .catch(error => console.error('Error:', error));
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Произошла ошибка при удалении материала');
+                });
         }
     }
 

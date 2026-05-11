@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using diplom.Data;
 using diplom.Models;
+using diplom.Services;
 using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
@@ -17,25 +18,33 @@ namespace diplom.Controllers
         private readonly IWebHostEnvironment _env;
         private readonly AppDbContext _context;
         private readonly ILogger<FileUploadController> _logger;
+        private readonly IRagService _ragService;
 
         public FileUploadController(
             IWebHostEnvironment env,
             AppDbContext context,
-            ILogger<FileUploadController> logger)
+            ILogger<FileUploadController> logger,
+            IRagService ragService)
         {
             _env = env;
             _context = context;
             _logger = logger;
+            _ragService = ragService;
         }
 
         [HttpPost("upload")]
         [RequestSizeLimit(10485760)]
-        public async Task<IActionResult> UploadFile(IFormFile file, [FromForm] int materialId)
+        public async Task<IActionResult> UploadFile(IFormFile file, [FromForm] int materialId, [FromForm] bool isIndexed)
         {
+            string uniqueFileName = "";
+            string filePath = "";
+            string extension = "";
+
             try
             {
                 Console.WriteLine("=== UPLOAD FILE START ===");
                 Console.WriteLine($"materialId: {materialId}");
+                Console.WriteLine($"isIndexed from form: {isIndexed}");
                 Console.WriteLine($"file is null: {file == null}");
 
                 if (file != null)
@@ -57,7 +66,7 @@ namespace diplom.Controllers
                     return BadRequest(new { error = "Файл слишком большой. Максимальный размер: 10 MB" });
                 }
 
-                var extension = Path.GetExtension(file.FileName).ToLower();
+                extension = Path.GetExtension(file.FileName).ToLower();
                 Console.WriteLine($"Extension: {extension}");
 
                 var allowedExtensions = new[] { ".pdf", ".docx", ".txt" };
@@ -78,8 +87,8 @@ namespace diplom.Controllers
                     Directory.CreateDirectory(uploadsFolder);
                 }
 
-                var uniqueFileName = $"{Guid.NewGuid()}{extension}";
-                var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                uniqueFileName = $"{Guid.NewGuid()}{extension}";
+                filePath = Path.Combine(uploadsFolder, uniqueFileName);
                 Console.WriteLine($"File path: {filePath}");
 
                 // Сохраняем файл
@@ -103,13 +112,29 @@ namespace diplom.Controllers
                 }
 
                 Console.WriteLine($"Material found: {material.Title}");
+                Console.WriteLine($"Current IsIndexed: {material.IsIndexed}");
 
                 // Обновляем путь к файлу
                 material.FilePath = $"/uploads/{uniqueFileName}";
                 material.FileType = extension;
 
+                // Обновляем флаг индексации, если он был передан
+                if (isIndexed != material.IsIndexed)
+                {
+                    material.IsIndexed = isIndexed;
+                    Console.WriteLine($"Updating IsIndexed to: {isIndexed}");
+                }
+
                 await _context.SaveChangesAsync();
-                Console.WriteLine($"✅ Database updated: FilePath = {material.FilePath}");
+                Console.WriteLine($"✅ Database updated: FilePath = {material.FilePath}, IsIndexed = {material.IsIndexed}");
+
+                // Если материал помечен для индексации, индексируем его
+                if (material.IsIndexed)
+                {
+                    Console.WriteLine("📚 Начинаем индексацию материала после загрузки файла...");
+                    await _ragService.IndexMaterialAsync(material, forceReindex: true);
+                    Console.WriteLine("✅ Индексация завершена");
+                }
 
                 Console.WriteLine("=== UPLOAD FILE SUCCESS ===");
                 return Ok(new
@@ -121,6 +146,17 @@ namespace diplom.Controllers
             }
             catch (Exception ex)
             {
+                // Если произошла ошибка и файл был создан - удаляем его
+                if (!string.IsNullOrEmpty(filePath) && System.IO.File.Exists(filePath))
+                {
+                    try
+                    {
+                        System.IO.File.Delete(filePath);
+                        Console.WriteLine($"Deleted file after error: {filePath}");
+                    }
+                    catch { }
+                }
+
                 Console.WriteLine($"❌ CRITICAL ERROR in UploadFile: {ex.Message}");
                 Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 _logger.LogError(ex, "Error uploading file");
@@ -154,6 +190,14 @@ namespace diplom.Controllers
                     material.FileType = null;
                     await _context.SaveChangesAsync();
                     Console.WriteLine($"Database updated");
+
+                    // Если материал был проиндексирован, обновляем индекс
+                    if (material.IsIndexed)
+                    {
+                        Console.WriteLine("📚 Переиндексируем материал после удаления файла...");
+                        await _ragService.IndexMaterialAsync(material, forceReindex: true);
+                        Console.WriteLine("✅ Переиндексация завершена");
+                    }
                 }
 
                 return Ok(new { success = true, message = "Файл удален" });

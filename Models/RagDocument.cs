@@ -1,6 +1,6 @@
 ﻿using diplom.Models;
 
-namespace  diplom.Models
+namespace diplom.Models
 {
     public enum AccessLevel
     {
@@ -18,6 +18,7 @@ namespace  diplom.Models
         public int DisciplineId { get; set; }
         public Discipline Discipline { get; set; } = null!;
         public string Title { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;  // Добавлено
         public string SourceType { get; set; } = "Material";
         public AccessLevel AccessLevel { get; set; } = AccessLevel.Discipline;
         public DateTime IndexedAt { get; set; } = DateTime.UtcNow;

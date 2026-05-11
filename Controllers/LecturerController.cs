@@ -6,6 +6,7 @@ using diplom.Models;
 using diplom.ViewModels;
 using diplom.Data;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using diplom.Services;
 //using diplom.Services;
 
 namespace diplom.Controllers
@@ -16,6 +17,8 @@ namespace diplom.Controllers
         private readonly UserManager<User> _userManager;
         private readonly AppDbContext _context;
         private readonly ILogger<LecturerController> _logger;
+        private readonly IRagService _ragService;
+
 
         private readonly IWebHostEnvironment _env;
         // private readonly IRagService _ragService;
@@ -24,14 +27,17 @@ namespace diplom.Controllers
             UserManager<User> userManager,
             AppDbContext context,
             ILogger<LecturerController> logger,
-            IWebHostEnvironment env)
+            IWebHostEnvironment env,
+             IRagService ragService)
             //IRagService ragService)       // Добавить
         {
             _userManager = userManager;
             _context = context;
             _logger = logger;
-            _env = env;   // Добавить
-           // _ragService = ragService;     // Добавить
+            _env = env;
+            _ragService = ragService;
+            // Добавить
+                                     // _ragService = ragService;     // Добавить
         }
 
         // ==================== СПИСОК ДИСЦИПЛИН ====================
@@ -668,7 +674,7 @@ namespace diplom.Controllers
         }
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddMaterialToSection(int disciplineId, int sectionId, string title, string content)
+        public async Task<IActionResult> AddMaterialToSection(int disciplineId, int sectionId, string title, string content, bool isIndexed)
         {
             try
             {
@@ -676,6 +682,7 @@ namespace diplom.Controllers
                 Console.WriteLine($"disciplineId: {disciplineId}");
                 Console.WriteLine($"sectionId: {sectionId}");
                 Console.WriteLine($"title: {title}");
+                Console.WriteLine($"isIndexed: {isIndexed}");
 
                 var material = new Material
                 {
@@ -684,11 +691,17 @@ namespace diplom.Controllers
                     DisciplineId = disciplineId,
                     SectionId = sectionId,
                     UploadedAt = DateTime.UtcNow,
-                    IsIndexed = false
+                    IsIndexed = isIndexed
                 };
 
                 _context.Materials.Add(material);
                 await _context.SaveChangesAsync();
+
+                // Индексация для AI, если включено
+                if (isIndexed)
+                {
+                    await _ragService.IndexMaterialAsync(material);
+                }
 
                 TempData["SuccessMessage"] = $"Материал \"{title}\" успешно добавлен!";
                 return RedirectToAction(nameof(Details), new { id = disciplineId });
@@ -861,6 +874,55 @@ namespace diplom.Controllers
             return Json(new { success = true, message = "Раздел удален" });
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteMaterial(int id)
+        {
+            var material = await _context.Materials
+                .Include(m => m.Discipline)
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (material == null)
+            {
+                return Json(new { success = false, message = "Материал не найден" });
+            }
+
+            // Проверяем доступ
+            var currentUser = await _userManager.GetUserAsync(User);
+            var hasAccess = await _context.DisciplineLecturers
+                .AnyAsync(dl => dl.DisciplineId == material.DisciplineId && dl.LecturerId == currentUser.Id);
+
+            if (!hasAccess)
+            {
+                return Json(new { success = false, message = "Нет доступа" });
+            }
+
+            var disciplineId = material.DisciplineId;
+
+            // Удаляем файл с диска
+            if (!string.IsNullOrEmpty(material.FilePath))
+            {
+                var fullPath = Path.Combine(_env.WebRootPath ?? _env.ContentRootPath, material.FilePath.TrimStart('/'));
+                if (System.IO.File.Exists(fullPath))
+                {
+                    System.IO.File.Delete(fullPath);
+                }
+            }
+
+            // Удаляем индексы из RAG
+            if (material.IsIndexed)
+            {
+                await _ragService.DeleteMaterialIndexAsync(material.Id);
+            }
+
+            // Удаляем материал из БД
+            _context.Materials.Remove(material);
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Материал успешно удален";
+            return Json(new { success = true, message = "Материал удален", redirect = Url.Action("Edit", new { id = disciplineId }) });
+        }
+
 
         // ==================== УПРАВЛЕНИЕ ГРУППАМИ (AJAX) ====================
 
@@ -906,4 +968,5 @@ namespace diplom.Controllers
             return Json(new { success = true, message = "Изменений не требуется" });
         }
     }
+
 }

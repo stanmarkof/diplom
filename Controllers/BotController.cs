@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using diplom.Services;
+using System.Threading.Tasks;
 
 namespace diplom.Controllers
 {

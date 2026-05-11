@@ -44,9 +44,12 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.SlidingExpiration = true;
 });
 
-// Временно закомментируйте RAG сервис
-// builder.Services.AddScoped<IRagService, RagService>();
-//builder.Services.AddScoped<IRagService, RagServiceDummy>();
+// Добавьте в Program.cs после builder.Services.AddControllersWithViews()
+
+// Регистрация RAG сервиса (используйте реальный RagService, а не заглушку)
+builder.Services.AddScoped<IRagService, RagService>();
+builder.Services.AddHttpContextAccessor();
+
 
 var app = builder.Build();
 
