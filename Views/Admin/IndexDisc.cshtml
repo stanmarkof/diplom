@@ -1,106 +1,116 @@
-﻿@model List<diplom.Models.Discipline>
+﻿@model List<diplom.Models.Course>
 
 @{
-    ViewData["Title"] = "Мои дисциплины";
+    ViewData["Title"] = "Все дисциплины";
 
-    // Группируем дисциплины по курсам
-    var coursesWithDisciplines = Model
-        .Where(d => d.Course != null)
-        .GroupBy(d => new { d.Course.Id, d.Course.Code, d.Course.Name })
-        .OrderBy(g => g.Key.Code)
-        .ToList();
-
+    // Получаем словарь дисциплин из ViewBag
+    var disciplinesByCourse = ViewBag.DisciplinesByCourse as Dictionary<int, List<diplom.Models.Discipline>> ?? new Dictionary<int, List<diplom.Models.Discipline>>();
     var coursesList = ViewBag.CoursesList as List<Course> ?? new List<Course>();
 }
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h3 class="mb-0"></i> Мои дисциплины</h3>
+        <h3 class="mb-0"></i> Все дисциплины</h3>
         <a asp-action="CreateDiscipline" class="btn btn-primary">
             <i class="fas fa-plus"></i> Создать дисциплину
         </a>
     </div>
     <div class="card-body">
-        @if (coursesWithDisciplines.Any())
+        @if (Model.Any())
         {
-            foreach (var courseGroup in coursesWithDisciplines)
+            foreach (var course in Model)
             {
+                var courseDisciplines = disciplinesByCourse.ContainsKey(course.Id) ? disciplinesByCourse[course.Id] : new List<diplom.Models.Discipline>();
+
                 <div class="card mb-4">
-                    <div class="card-header bg-light" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#courseCollapse@(courseGroup.Key.Id)">
+                    <div class="card-header bg-light" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#courseCollapse@(course.Id)">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <h4 class="mb-0">
-                                  
-                                    @courseGroup.Key.Code - @courseGroup.Key.Name
+                               
+                                    @course.Code - @course.Name
                                 </h4>
                                 <small class="text-muted">
-                                 Дисциплин в курсе: @courseGroup.Count()
+                                     Дисциплин в курсе: @courseDisciplines.Count
                                 </small>
                             </div>
-                          
+                            <button class="btn btn-sm btn-outline-primary" type="button" onclick="event.stopPropagation()">
+                              
+                            </button>
                         </div>
                     </div>
 
-                    <div id="courseCollapse@(courseGroup.Key.Id)" class="collapse">
+                    <div id="courseCollapse@(course.Id)" class="collapse">
+                        <div class="card-body">
+                            @if (courseDisciplines.Any())
+                            {
+                                <div class="row">
+                                    @foreach (var discipline in courseDisciplines)
+                                    {
+                                        <div class="col-md-6 col-lg-4 col-xl-3 mb-4">
+                                            <a asp-action="Details" asp-route-id="@discipline.Id" class="text-decoration-none">
+                                                <div class="card h-100 shadow-sm discipline-card">
+                                                    <div class="card-body">
+                                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                                            <h5 class="card-title mb-0 text-dark">
+                                                              
+                                                                @discipline.Name
+                                                            </h5>
+                                                            <span class="badge bg-secondary">
+                                                                @discipline.CourseNumber курс, @discipline.Semester сем.
+                                                            </span>
+                                                        </div>
 
-                            <div class="row">
-                                @foreach (var discipline in courseGroup)
-                                {
-                                    <div class="col-md-6 col-lg-4 col-xl-3 mb-4">
-                                        <!-- Вся карточка кликабельна -->
-                                        <a asp-action="Details" asp-route-id="@discipline.Id" class="text-decoration-none">
-                                            <div class="card h-100 shadow-sm discipline-card">
-                                                <div class="card-body">
-                                                    <div class="d-flex justify-content-between align-items-start mb-2">
-                                                        <h5 class="card-title mb-0 text-dark">
-                                                            
-                                                            @discipline.Name
-                                                        </h5>
-                                                        <span class="badge bg-secondary">
-                                                            @discipline.CourseNumber курс, @discipline.Semester сем.
-                                                        </span>
-                                                    </div>
+                                                        <hr class="my-2" />
 
-                                                    <hr class="my-2" />
+                                                        <p class="card-text text-muted small">
+                                                            @if (!string.IsNullOrEmpty(discipline.Description))
+                                                            {
+                                                                @(discipline.Description.Length > 80 ? discipline.Description.Substring(0, 80) + "..." : discipline.Description)
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="fst-italic">Описание отсутствует</span>
+                                                            }
+                                                        </p>
 
-                                                    <p class="card-text text-muted small">
-                                                        @if (!string.IsNullOrEmpty(discipline.Description))
-                                                        {
-                                                            @(discipline.Description.Length > 80 ? discipline.Description.Substring(0, 80) + "..." : discipline.Description)
-                                                        }
-                                                        else
-                                                        {
-                                                            <span class="fst-italic">Описание отсутствует</span>
-                                                        }
-                                                    </p>
-
-                                                    <div class="mt-2">
-                                                        <small class="text-muted">
-                                                          
-                                                            Преподаватели: @(discipline.DisciplineLecturers?.Count ?? 0)
-                                                        </small>
+                                                        <div class="mt-2">
+                                                            <small class="text-muted">
+                                                               
+                                                                Преподаватели: @(discipline.DisciplineLecturers?.Count ?? 0)
+                                                            </small>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </a>
-                                    </div>
-                                }
-                            </div>
+                                            </a>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-light text-center">
+                                    <i class="fas fa-info-circle"></i> В этом курсе пока нет дисциплин.
+                                </div>
+                            }
                         </div>
                     </div>
-               
+                </div>
             }
         }
         else
         {
             <div class="alert alert-info text-center">
-               
-                <h4>У вас пока нет дисциплин</h4>
-                <p class="mb-0">Создайте новую дисциплину или обратитесь к администратору.</p>
+                <i class="fas fa-info-circle fa-2x mb-3 d-block"></i>
+                <h4>В системе пока нет курсов</h4>
+                <p class="mb-0">Сначала создайте курс (направление подготовки).</p>
+                <a asp-action="CreateCourse" class="btn btn-primary mt-3">Создать курс</a>
             </div>
         }
     </div>
 </div>
+
+
 
 <!-- Модальное окно создания дисциплины -->
 <div class="modal fade" id="createDisciplineModal" tabindex="-1">
@@ -108,7 +118,7 @@
         <div class="modal-content">
             <form asp-action="CreateDiscipline" method="post">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">Создание дисциплины</h5>
+                    <h5 class="modal-title"><i class="fas fa-plus"></i> Создание дисциплины</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">

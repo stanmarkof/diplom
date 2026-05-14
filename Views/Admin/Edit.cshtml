@@ -501,8 +501,7 @@
 
     function deleteTest(id) {
         if (confirm('Вы уверены, что хотите удалить этот тест?')) {
-            // Исправлено: вызываем правильный контроллер
-            fetch(`/Lecturer/DeleteTest?id=${id}`, {
+            fetch(`/Admin/DeleteTest?id=${id}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

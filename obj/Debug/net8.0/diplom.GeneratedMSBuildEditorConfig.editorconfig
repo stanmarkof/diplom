@@ -9,131 +9,195 @@ build_property.EnforceExtendedAnalyzerRules =
 build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property.RootNamespace = diplom
 build_property.RootNamespace = diplom
-build_property.ProjectDir = c:\distant\new\diplom\
+build_property.ProjectDir = C:\distant\new\diplom\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.RazorLangVersion = 8.0
 build_property.SupportLocalizedComponentNames = 
 build_property.GenerateRazorMetadataSourceChecksumAttributes = 
-build_property.MSBuildProjectDirectory = c:\distant\new\diplom
+build_property.MSBuildProjectDirectory = C:\distant\new\diplom
 build_property._RazorSourceGeneratorDebug = 
 
-[c:/distant/new/diplom/Views/Account/ChangePassword.cshtml]
+[C:/distant/new/diplom/Views/Account/ChangePassword.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFxDaGFuZ2VQYXNzd29yZC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Account/Edit.cshtml]
+[C:/distant/new/diplom/Views/Account/Edit.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFxFZGl0LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Account/Login.cshtml]
+[C:/distant/new/diplom/Views/Account/Login.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFxMb2dpbi5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Account/Profile.cshtml]
+[C:/distant/new/diplom/Views/Account/Profile.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFxQcm9maWxlLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Account/Register.cshtml]
+[C:/distant/new/diplom/Views/Account/Register.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFxSZWdpc3Rlci5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Admin/AllUsers.cshtml]
+[C:/distant/new/diplom/Views/Admin/AddQuestion.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cQWRkUXVlc3Rpb24uY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/distant/new/diplom/Views/Admin/AllUsers.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cQWxsVXNlcnMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Admin/ChangeVerificationCode.cshtml]
+[C:/distant/new/diplom/Views/Admin/ChangeVerificationCode.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cQ2hhbmdlVmVyaWZpY2F0aW9uQ29kZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Admin/Courses.cshtml]
+[C:/distant/new/diplom/Views/Admin/Courses.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cQ291cnNlcy5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Admin/CreateAdmin.cshtml]
+[C:/distant/new/diplom/Views/Admin/CreateAdmin.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cQ3JlYXRlQWRtaW4uY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Admin/CreateLecturer.cshtml]
+[C:/distant/new/diplom/Views/Admin/CreateLecturer.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cQ3JlYXRlTGVjdHVyZXIuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Admin/ManageCourseGroups.cshtml]
+[C:/distant/new/diplom/Views/Admin/DisciplineDetails.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cRGlzY2lwbGluZURldGFpbHMuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/distant/new/diplom/Views/Admin/Edit.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cRWRpdC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/distant/new/diplom/Views/Admin/EditMaterial.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cRWRpdE1hdGVyaWFsLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/distant/new/diplom/Views/Admin/EditQuestion.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cRWRpdFF1ZXN0aW9uLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/distant/new/diplom/Views/Admin/EditSection.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cRWRpdFNlY3Rpb24uY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/distant/new/diplom/Views/Admin/EditTest.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cRWRpdFRlc3QuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/distant/new/diplom/Views/Admin/IndexDisc.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cSW5kZXhEaXNjLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/distant/new/diplom/Views/Admin/ManageCourseGroups.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cTWFuYWdlQ291cnNlR3JvdXBzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Admin/ManageCourses.cshtml]
+[C:/distant/new/diplom/Views/Admin/ManageCourses.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cTWFuYWdlQ291cnNlcy5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Admin/ManageDisciplines.cshtml]
+[C:/distant/new/diplom/Views/Admin/ManageDisciplines.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cTWFuYWdlRGlzY2lwbGluZXMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Admin/ManageGroups.cshtml]
+[C:/distant/new/diplom/Views/Admin/ManageGroups.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cTWFuYWdlR3JvdXBzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Admin/ViewFeedbacks.cshtml]
+[C:/distant/new/diplom/Views/Admin/ViewFeedbacks.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWRtaW5cVmlld0ZlZWRiYWNrcy5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Home/Index.cshtml]
+[C:/distant/new/diplom/Views/Home/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Home/Privacy.cshtml]
+[C:/distant/new/diplom/Views/Home/Privacy.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxQcml2YWN5LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Lecturer/AddQuestion.cshtml]
+[C:/distant/new/diplom/Views/Lecturer/AddQuestion.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTGVjdHVyZXJcQWRkUXVlc3Rpb24uY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Lecturer/Details.cshtml]
+[C:/distant/new/diplom/Views/Lecturer/Details.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTGVjdHVyZXJcRGV0YWlscy5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Lecturer/Edit.cshtml]
+[C:/distant/new/diplom/Views/Lecturer/Edit.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTGVjdHVyZXJcRWRpdC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Lecturer/EditMaterial.cshtml]
+[C:/distant/new/diplom/Views/Lecturer/EditMaterial.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTGVjdHVyZXJcRWRpdE1hdGVyaWFsLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Lecturer/EditQuestion.cshtml]
+[C:/distant/new/diplom/Views/Lecturer/EditQuestion.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTGVjdHVyZXJcRWRpdFF1ZXN0aW9uLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Lecturer/EditSection.cshtml]
+[C:/distant/new/diplom/Views/Lecturer/EditSection.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTGVjdHVyZXJcRWRpdFNlY3Rpb24uY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Lecturer/EditTest.cshtml]
+[C:/distant/new/diplom/Views/Lecturer/EditTest.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTGVjdHVyZXJcRWRpdFRlc3QuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Lecturer/Index.cshtml]
+[C:/distant/new/diplom/Views/Lecturer/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTGVjdHVyZXJcSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Shared/Error.cshtml]
+[C:/distant/new/diplom/Views/Lecturer/TestResultDetails.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTGVjdHVyZXJcVGVzdFJlc3VsdERldGFpbHMuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/distant/new/diplom/Views/Lecturer/TestWithResults.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTGVjdHVyZXJcVGVzdFdpdGhSZXN1bHRzLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/distant/new/diplom/Views/Shared/Error.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXEVycm9yLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Shared/_ValidationScriptsPartial.cshtml]
+[C:/distant/new/diplom/Views/Shared/_ValidationScriptsPartial.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9WYWxpZGF0aW9uU2NyaXB0c1BhcnRpYWwuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/_ViewImports.cshtml]
+[C:/distant/new/diplom/Views/Student/DisciplineDetails.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3R1ZGVudFxEaXNjaXBsaW5lRGV0YWlscy5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/distant/new/diplom/Views/Student/Feedback.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3R1ZGVudFxGZWVkYmFjay5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/distant/new/diplom/Views/Student/MyDisciplines.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3R1ZGVudFxNeURpc2NpcGxpbmVzLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/distant/new/diplom/Views/Student/MyResults.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3R1ZGVudFxNeVJlc3VsdHMuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/distant/new/diplom/Views/Student/TakeTest.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3R1ZGVudFxUYWtlVGVzdC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/distant/new/diplom/Views/Student/TestResult.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3R1ZGVudFxUZXN0UmVzdWx0LmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/distant/new/diplom/Views/_ViewImports.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcX1ZpZXdJbXBvcnRzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/_ViewStart.cshtml]
+[C:/distant/new/diplom/Views/_ViewStart.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcX1ZpZXdTdGFydC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[c:/distant/new/diplom/Views/Shared/_Layout.cshtml]
+[C:/distant/new/diplom/Views/Shared/_Layout.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9MYXlvdXQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = b-wdi9wayw0i

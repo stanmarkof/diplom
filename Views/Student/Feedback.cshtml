@@ -1,0 +1,58 @@
+﻿@{
+    ViewData["Title"] = "Обратная связь";
+}
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="mb-0"><i class="fas fa-comment-dots"></i> Обратная связь</h3>
+    </div>
+    <div class="card-body">
+        <form asp-action="SubmitFeedback" method="post">
+            <div class="mb-3">
+                <label class="form-label">Ваше сообщение</label>
+                <textarea name="message" class="form-control" rows="5" required placeholder="Напишите ваш отзыв, пожелания или сообщите о проблеме..."></textarea>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Оценка (необязательно)</label>
+                <div class="rating">
+                    <input type="radio" name="rating" value="5" id="star5" /><label for="star5" class="star">★</label>
+                    <input type="radio" name="rating" value="4" id="star4" /><label for="star4" class="star">★</label>
+                    <input type="radio" name="rating" value="3" id="star3" /><label for="star3" class="star">★</label>
+                    <input type="radio" name="rating" value="2" id="star2" /><label for="star2" class="star">★</label>
+                    <input type="radio" name="rating" value="1" id="star1" /><label for="star1" class="star">★</label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-paper-plane"></i> Отправить
+            </button>
+            <a asp-action="MyDisciplines" class="btn btn-secondary">Назад</a>
+        </form>
+    </div>
+</div>
+
+<style>
+    .rating {
+        display: flex;
+        flex-direction: row-reverse;
+        justify-content: flex-end;
+    }
+
+        .rating input {
+            display: none;
+        }
+
+        .rating label {
+            font-size: 30px;
+            color: #ddd;
+            cursor: pointer;
+            margin: 0 2px;
+        }
+
+            .rating input:checked ~ label,
+            .rating label:hover,
+            .rating label:hover ~ label {
+                color: #ffc107;
+            }
+</style>

@@ -1,0 +1,250 @@
+﻿/* ==================== MOBILE.CSS - ИСПРАВЛЕННАЯ ВЕРСИЯ ==================== */
+
+@media (max-width: 768px) {
+
+    /* === ШАПКА - фиксированная, но с правильным отступом === */
+    .top-navbar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 1000 !important;
+        background: var(--bg-secondary) !important;
+        padding: 0.5rem 0.75rem !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+    }
+
+    /* Отступ для контента под шапкой */
+    .main-content {
+        margin-top: 60px !important;
+        margin-left: 0 !important;
+        padding: 0.75rem !important;
+    }
+
+    /* === САЙДБАР - нормальный размер, не на всю страницу === */
+    .sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 260px !important;
+        height: 100vh !important;
+        background: var(--bg-sidebar) !important;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 1050 !important;
+        overflow-y: auto !important;
+        box-shadow: 2px 0 8px rgba(0,0,0,0.1) !important;
+    }
+
+        .sidebar.mobile-open {
+            transform: translateX(0) !important;
+        }
+
+    /* Оверлей для затемнения при открытом меню */
+    .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 1040;
+        display: none;
+    }
+
+        .sidebar-overlay.active {
+            display: block;
+        }
+
+    /* === КНОПКА МЕНЮ - слева, как положено === */
+    .mobile-menu-toggle {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        background: transparent !important;
+        border: none !important;
+        font-size: 1.25rem !important;
+        color: var(--text-primary) !important;
+        cursor: pointer;
+        padding: 0.5rem;
+        margin-right: 0.75rem;
+        order: -1;
+    }
+
+    /* Контейнер в шапке для правильного расположения */
+    .top-navbar .d-flex {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        width: 100%;
+    }
+
+    /* Логотип не должен сжиматься */
+    .navbar-brand {
+        font-size: 0.9rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 60%;
+    }
+
+    /* Скрываем текст у аватара, оставляем только иконку */
+    .user-dropdown .dropdown-toggle span:not(.user-avatar) {
+        display: none !important;
+    }
+
+    /* === ТАБЛИЦЫ - горизонтальная прокрутка, но без ломки === */
+    .table-responsive-mobile {
+        width: 100%;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        margin-bottom: 1rem;
+    }
+
+    .table {
+        min-width: 100% !important;
+        width: 100% !important;
+    }
+
+    /* Если таблица всё равно широкая - показываем скролл */
+    .table-wrapper {
+        overflow-x: auto;
+        margin: 0 -0.75rem;
+        padding: 0 0.75rem;
+    }
+
+    /* === ВИДЖЕТЫ БОТА - фиксируем === */
+    .bot-widget {
+        position: fixed !important;
+        bottom: 80px !important;
+        right: 16px !important;
+        z-index: 1000 !important;
+    }
+
+    .bot-toggle-btn,
+    .chat-toggle-btn {
+        width: 48px !important;
+        height: 48px !important;
+    }
+
+    .bot-window {
+        position: fixed !important;
+        bottom: 80px !important;
+        right: 16px !important;
+        left: auto !important;
+        width: calc(100% - 32px) !important;
+        max-width: 350px !important;
+        height: 60vh !important;
+        max-height: 450px !important;
+        z-index: 1001 !important;
+    }
+
+    .chat-widget {
+        position: fixed !important;
+        bottom: 16px !important;
+        right: 16px !important;
+        z-index: 1000 !important;
+    }
+
+    /* === КАРТОЧКИ === */
+    .card {
+        margin-bottom: 0.75rem !important;
+    }
+
+    .card-header {
+        padding: 0.75rem !important;
+    }
+
+    .card-body {
+        padding: 0.75rem !important;
+    }
+
+    /* === КНОПКИ - не все на всю ширину === */
+    .btn:not(.bot-toggle-btn):not(.chat-toggle-btn):not(.bot-send-btn) {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Кнопки в группе - нормально */
+    .btn-group .btn {
+        width: auto;
+    }
+
+    /* === СЕТКА === */
+    .row {
+        --bs-gutter-x: 0.75rem;
+    }
+
+        .row > [class*="col-"] {
+            width: 100%;
+            margin-bottom: 0.75rem;
+        }
+
+    /* Для карточек в 2 колонки на планшетах */
+    .row-cols-sm-2 > [class*="col-"] {
+        width: 50%;
+    }
+
+    /* === ФОРМЫ === */
+    .form-control,
+    .form-select {
+        font-size: 16px !important; /* Чтобы не зумалось на iOS */
+    }
+
+    /* === МОДАЛЬНЫЕ ОКНА === */
+    .modal-dialog {
+        margin: 0.5rem !important;
+    }
+
+    .modal-content {
+        border-radius: 0.75rem !important;
+    }
+
+    /* === ПАГИНАЦИЯ === */
+    .pagination {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.25rem;
+    }
+
+    .page-item {
+        margin-bottom: 0.25rem;
+    }
+
+    /* === ФУТЕР === */
+    footer {
+        margin-left: 0 !important;
+        padding: 0.75rem !important;
+        font-size: 0.7rem !important;
+    }
+
+    /* === АККОРДЕОН === */
+    .accordion-button {
+        padding: 0.75rem !important;
+        font-size: 0.875rem !important;
+    }
+
+    .accordion-body {
+        padding: 0.75rem !important;
+    }
+}
+
+/* Очень маленькие телефоны */
+@media (max-width: 480px) {
+    .navbar-brand {
+        font-size: 0.75rem !important;
+        max-width: 50%;
+    }
+
+    .bot-window {
+        width: calc(100% - 24px) !important;
+        right: 12px !important;
+        bottom: 70px !important;
+    }
+
+    .bot-toggle-btn,
+    .chat-toggle-btn {
+        width: 42px !important;
+        height: 42px !important;
+    }
+}

@@ -348,6 +348,34 @@ namespace diplom.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteTest(int id)
+        {
+            var test = await _context.Tests
+                .Include(t => t.Questions)
+                .FirstOrDefaultAsync(t => t.Id == id);
+
+            if (test == null)
+            {
+                return Json(new { success = false, message = "Тест не найден" });
+            }
+
+            var disciplineId = test.DisciplineId;
+
+            // Удаляем все вопросы теста
+            if (test.Questions != null && test.Questions.Any())
+            {
+                _context.Questions.RemoveRange(test.Questions);
+            }
+
+            _context.Tests.Remove(test);
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Тест успешно удален";
+            return Json(new { success = true, redirect = Url.Action("Edit", new { id = disciplineId }) });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> EditTest(int id, string title, string description, int durationMinutes, int maxScore, DateTime? deadline, bool isPublished, bool isVisible)
         {
             var test = await _context.Tests.FindAsync(id);
@@ -498,6 +526,7 @@ namespace diplom.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteQuestion(int id)
         {
             var question = await _context.Questions
@@ -521,7 +550,8 @@ namespace diplom.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            return Json(new { success = true, message = "Вопрос удален" });
+            TempData["SuccessMessage"] = "Вопрос успешно удален";
+            return Json(new { success = true, redirect = Url.Action("EditTest", new { id = testId }) });
         }
 
         // ==================== УПРАВЛЕНИЕ секциями  ====================
@@ -831,21 +861,29 @@ namespace diplom.Controllers
                 return Json(new { success = false, message = "Раздел не найден" });
             }
 
-            // Проверяем доступ
-            var currentUser = await _userManager.GetUserAsync(User);
-            var hasAccess = await _context.DisciplineLecturers
-                .AnyAsync(dl => dl.DisciplineId == section.DisciplineId && dl.LecturerId == currentUser.Id);
-
-            if (!hasAccess)
-            {
-                return Json(new { success = false, message = "Нет доступа" });
-            }
-
             var disciplineId = section.DisciplineId;
 
             // Удаляем все материалы раздела
             if (section.Materials != null && section.Materials.Any())
             {
+                // Сначала удаляем индексы материалов
+                foreach (var material in section.Materials)
+                {
+                    if (material.IsIndexed)
+                    {
+                        await _ragService.DeleteMaterialIndexAsync(material.Id);
+                    }
+
+                    // Удаляем файлы
+                    if (!string.IsNullOrEmpty(material.FilePath))
+                    {
+                        var fullPath = Path.Combine(_env.WebRootPath ?? _env.ContentRootPath, material.FilePath.TrimStart('/'));
+                        if (System.IO.File.Exists(fullPath))
+                        {
+                            System.IO.File.Delete(fullPath);
+                        }
+                    }
+                }
                 _context.Materials.RemoveRange(section.Materials);
             }
 
@@ -871,7 +909,7 @@ namespace diplom.Controllers
             await _context.SaveChangesAsync();
 
             TempData["SuccessMessage"] = "Раздел и все его содержимое успешно удалены";
-            return Json(new { success = true, message = "Раздел удален" });
+            return Json(new { success = true, redirect = Url.Action("Edit", new { id = disciplineId }) });
         }
 
         [HttpPost]
@@ -885,16 +923,6 @@ namespace diplom.Controllers
             if (material == null)
             {
                 return Json(new { success = false, message = "Материал не найден" });
-            }
-
-            // Проверяем доступ
-            var currentUser = await _userManager.GetUserAsync(User);
-            var hasAccess = await _context.DisciplineLecturers
-                .AnyAsync(dl => dl.DisciplineId == material.DisciplineId && dl.LecturerId == currentUser.Id);
-
-            if (!hasAccess)
-            {
-                return Json(new { success = false, message = "Нет доступа" });
             }
 
             var disciplineId = material.DisciplineId;
@@ -920,7 +948,9 @@ namespace diplom.Controllers
             await _context.SaveChangesAsync();
 
             TempData["SuccessMessage"] = "Материал успешно удален";
-            return Json(new { success = true, message = "Материал удален", redirect = Url.Action("Edit", new { id = disciplineId }) });
+
+            // Возвращаем JSON для AJAX запроса
+            return Json(new { success = true, redirect = Url.Action("Edit", new { id = disciplineId }) });
         }
 
 
@@ -966,6 +996,133 @@ namespace diplom.Controllers
             }
 
             return Json(new { success = true, message = "Изменений не требуется" });
+        }
+
+        // ==================== ПРОСМОТР РЕЗУЛЬТАТОВ СТУДЕНТОВ ====================
+
+        [HttpGet]
+        public async Task<IActionResult> DisciplineResults(int id)
+        {
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser == null)
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            // Проверяем доступ к дисциплине
+            var hasAccess = await _context.DisciplineLecturers
+                .AnyAsync(dl => dl.DisciplineId == id && dl.LecturerId == currentUser.Id);
+
+            if (!hasAccess)
+            {
+                return Forbid();
+            }
+
+            var discipline = await _context.Disciplines
+                .Include(d => d.Course)
+                .Include(d => d.Sections)
+                    .ThenInclude(s => s.Tests)
+                        .ThenInclude(t => t.TestResults)
+                            .ThenInclude(tr => tr.Student)
+                .FirstOrDefaultAsync(d => d.Id == id);
+
+            if (discipline == null)
+            {
+                return NotFound();
+            }
+
+            // Собираем все результаты тестов по дисциплине
+            var allResults = new List<TestResult>();
+            foreach (var section in discipline.Sections)
+            {
+                foreach (var test in section.Tests)
+                {
+                    foreach (var result in test.TestResults)
+                    {
+                        allResults.Add(result);
+                    }
+                }
+            }
+
+            ViewBag.Discipline = discipline;
+            return View(allResults.OrderByDescending(r => r.CompletedAt).ToList());
+        }
+
+        // ==================== ПРОСМОТР ТЕСТА С РЕЗУЛЬТАТАМИ ====================
+
+        [HttpGet]
+        public async Task<IActionResult> TestWithResults(int id)
+        {
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser == null)
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            var test = await _context.Tests
+                .Include(t => t.Discipline)
+                .Include(t => t.Section)
+                .Include(t => t.Questions)
+                .Include(t => t.TestResults)
+                    .ThenInclude(tr => tr.Student)
+                        .ThenInclude(s => s.StudentGroup)  // ← ДОБАВИТЬ ЭТУ СТРОКУ!
+                .FirstOrDefaultAsync(t => t.Id == id);
+
+            if (test == null)
+            {
+                return NotFound();
+            }
+
+            // Проверяем доступ
+            var hasAccess = await _context.DisciplineLecturers
+                .AnyAsync(dl => dl.DisciplineId == test.DisciplineId && dl.LecturerId == currentUser.Id);
+
+            if (!hasAccess)
+            {
+                return Forbid();
+            }
+
+            return View(test);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> TestResultDetails(int id)
+        {
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser == null)
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            var result = await _context.TestResults
+                .Include(r => r.Student)
+                .Include(r => r.Test)
+                    .ThenInclude(t => t.Questions)
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (result == null)
+            {
+                return NotFound();
+            }
+
+            // Проверяем доступ
+            var hasAccess = await _context.DisciplineLecturers
+                .AnyAsync(dl => dl.DisciplineId == result.Test.DisciplineId && dl.LecturerId == currentUser.Id);
+
+            if (!hasAccess)
+            {
+                return Forbid();
+            }
+
+            // Десериализуем ответы
+            var answers = string.IsNullOrEmpty(result.AnswersJson)
+                ? new Dictionary<int, string>()
+                : System.Text.Json.JsonSerializer.Deserialize<Dictionary<int, string>>(result.AnswersJson);
+
+            ViewBag.Answers = answers;
+            ViewBag.Questions = result.Test.Questions.OrderBy(q => q.Id).ToList();
+
+            return View(result);
         }
     }
 

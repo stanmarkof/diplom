@@ -1,0 +1,69 @@
+﻿@model List<diplom.Models.Discipline>
+
+@{
+    ViewData["Title"] = "Мои дисциплины";
+}
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="mb-0"><i class="fas fa-book-open"></i> Мои дисциплины</h3>
+    </div>
+    <div class="card-body">
+        @if (Model.Any())
+        {
+            <div class="row">
+                @foreach (var discipline in Model)
+                {
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <a asp-action="DisciplineDetails" asp-route-id="@discipline.Id" class="text-decoration-none">
+                            <div class="card h-100 shadow-sm discipline-card">
+                                <div class="card-body">
+                                    <h5 class="card-title text-dark">
+                                        <i class="fas fa-book text-primary"></i> @discipline.Name
+                                    </h5>
+                                    <p class="card-text text-muted small">
+                                        @discipline.Course?.Code - @discipline.Course?.Name
+                                    </p>
+                                    <p class="card-text">
+                                        @if (!string.IsNullOrEmpty(discipline.Description))
+                                        {
+                                            @(discipline.Description.Length > 100 ? discipline.Description.Substring(0, 100) + "..." : discipline.Description)
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted fst-italic">Описание отсутствует</span>
+                                        }
+                                    </p>
+                                    <div class="mt-2">
+                                        <span class="badge bg-secondary">@discipline.CourseNumber курс</span>
+                                        <span class="badge bg-secondary">@discipline.Semester семестр</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle fa-2x mb-3 d-block"></i>
+                <h4>У вас пока нет дисциплин</h4>
+                <p class="mb-0">Обратитесь к администратору или преподавателю.</p>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .discipline-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        cursor: pointer;
+    }
+
+        .discipline-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+        }
+</style>

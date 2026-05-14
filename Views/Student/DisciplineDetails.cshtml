@@ -29,10 +29,7 @@ else
                 {
                     <span class="badge bg-secondary ms-1">@lecturer.Lecturer?.FullName</span>
                 }
-                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning ms-3">
-                    <i class="fas fa-edit"></i> Редактировать дисциплину
-                </a>
-                <a asp-action="Index" class="btn btn-secondary ms-2">
+                <a asp-action="Index" class="btn btn-secondary ms-3">
                     <i class="fas fa-arrow-left"></i> Назад
                 </a>
             </div>
@@ -46,7 +43,7 @@ else
 
             <hr />
 
-            <!-- Разделы дисциплины (только просмотр) -->
+            <!-- Разделы дисциплины -->
             <div>
                 <h5 class="mb-3"><i class="fas fa-folder"></i> Разделы дисциплины</h5>
 
@@ -69,13 +66,13 @@ else
                                 </h2>
                                 <div id="collapseSection@(sect.Id)" class="accordion-collapse collapse @(sect.Order == 1 ? "show" : "")" data-bs-parent="#sectionsAccordion">
                                     <div class="accordion-body">
-                                        <!-- Материалы раздела (карточки, не таблицы) -->
+                                        <!-- Материалы раздела (горизонтальные карточки) -->
                                         <div class="mb-4">
                                             <h6><i class="fas fa-file-alt"></i> Материалы</h6>
-                                            @if (sect.Materials != null && sect.Materials.Any())
+                                            @if (sect.Materials != null && sect.Materials.Any(m => m.IsVisible))
                                             {
                                                 <div class="row">
-                                                    @foreach (var material in sect.Materials)
+                                                    @foreach (var material in sect.Materials.Where(m => m.IsVisible))
                                                     {
                                                         <div class="col-md-6 col-lg-4 mb-3">
                                                             <div class="card h-100">
@@ -104,41 +101,39 @@ else
                                             }
                                         </div>
 
-                                        <!-- Тесты раздела (карточки, не таблицы) -->
+                                        <!-- Тесты раздела (горизонтальные карточки) -->
                                         <div>
                                             <h6><i class="fas fa-tasks"></i> Тесты</h6>
-                                            @if (sect.Tests != null && sect.Tests.Any())
+                                            @if (sect.Tests != null && sect.Tests.Any(t => t.IsPublished && t.IsVisible))
                                             {
                                                 <div class="row">
-                                                    @foreach (var test in sect.Tests)
+                                                    @foreach (var test in sect.Tests.Where(t => t.IsPublished && t.IsVisible))
                                                     {
                                                         <div class="col-md-6 col-lg-4 mb-3">
-                                                            <a asp-action="TestWithResults" asp-route-id="@test.Id" class="text-decoration-none">
-                                                                <div class="card h-100 shadow-sm test-card">
-                                                                    <div class="card-body">
-                                                                        <h6 class="card-title text-dark">
-                                                                            <i class="fas fa-tasks text-info me-1"></i> @test.Title
-                                                                        </h6>
-                                                                        @if (!string.IsNullOrEmpty(test.Description))
+                                                            <div class="card h-100 shadow-sm">
+                                                                <div class="card-body">
+                                                                    <h6 class="card-title">
+                                                                        <i class="fas fa-tasks text-info me-1"></i> @test.Title
+                                                                    </h6>
+                                                                    @if (!string.IsNullOrEmpty(test.Description))
+                                                                    {
+                                                                        <p class="card-text small text-muted">@(test.Description.Length > 80 ? test.Description.Substring(0, 80) + "..." : test.Description)</p>
+                                                                    }
+                                                                    <div class="mt-2">
+                                                                        <span class="badge bg-secondary">Вопросов: @(test.Questions?.Count ?? 0)</span>
+                                                                        <span class="badge bg-secondary">Макс. балл: @test.MaxScore</span>
+                                                                        @if (test.Deadline.HasValue)
                                                                         {
-                                                                            <p class="card-text small text-muted">@(test.Description.Length > 80 ? test.Description.Substring(0, 80) + "..." : test.Description)</p>
+                                                                            <span class="badge bg-warning text-dark">Дедлайн: @test.Deadline.Value.ToString("dd.MM.yyyy")</span>
                                                                         }
-                                                                        <div class="mt-2">
-                                                                            <span class="badge bg-secondary">Вопросов: @(test.Questions?.Count ?? 0)</span>
-                                                                            <span class="badge bg-secondary">Макс. балл: @test.MaxScore</span>
-                                                                            @if (test.Deadline.HasValue)
-                                                                            {
-                                                                                <span class="badge bg-warning text-dark">Дедлайн: @test.Deadline.Value.ToString("dd.MM.yyyy")</span>
-                                                                            }
-                                                                        </div>
-                                                                    </div>
-                                                                    <div class="card-footer bg-transparent">
-                                                                        <small class="text-muted">
-                                                                            <i class="fas fa-chart-line"></i> Нажмите для просмотра результатов
-                                                                        </small>
                                                                     </div>
                                                                 </div>
-                                                            </a>
+                                                                <div class="card-footer bg-transparent">
+                                                                    <a asp-action="TakeTest" asp-route-id="@test.Id" class="btn btn-primary btn-sm w-100">
+                                                                        <i class="fas fa-play"></i> Пройти тест
+                                                                    </a>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     }
                                                 </div>

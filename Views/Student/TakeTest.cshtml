@@ -1,0 +1,97 @@
+﻿@model diplom.Models.Test
+
+@{
+    ViewData["Title"] = $"Тест: {Model.Title}";
+    var questions = ViewBag.Questions as List<diplom.Models.Question> ?? new List<diplom.Models.Question>();
+}
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="mb-0"><i class="fas fa-tasks"></i> @Model.Title</h3>
+        <small class="text-muted">@Model.Description</small>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> Длительность: @Model.DurationMinutes минут
+            @if (Model.Deadline.HasValue)
+            {
+                <span class="ms-3">Дедлайн: @Model.Deadline.Value.ToString("dd.MM.yyyy HH:mm")</span>
+            }
+        </div>
+
+        <form asp-action="SubmitTest" method="post" id="testForm">
+            <input type="hidden" name="testId" value="@Model.Id" />
+
+            @foreach (var question in questions)
+            {
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <strong>Вопрос @(questions.IndexOf(question) + 1)</strong>
+                        <span class="badge bg-primary float-end">@question.Points баллов</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-3">@question.Text</p>
+
+                        @if (!string.IsNullOrEmpty(question.OptionsJson))
+                        {
+                            var options = System.Text.Json.JsonSerializer.Deserialize<List<string>>(question.OptionsJson);
+                            if (options != null)
+                            {
+                                foreach (var option in options)
+                                {
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="radio" name="question_@question.Id" value="@option" id="q@(question.Id)_@option.GetHashCode()" />
+                                        <label class="form-check-label" for="q@(question.Id)_@option.GetHashCode()">
+                                            @option
+                                        </label>
+                                    </div>
+                                }
+                            }
+                        }
+                        else
+                        {
+                            <textarea class="form-control" name="question_@question.Id" rows="3" placeholder="Введите ваш ответ..."></textarea>
+                        }
+                    </div>
+                </div>
+            }
+
+            <div class="mt-3">
+                <button type="submit" class="btn btn-success" onclick="return confirm('Вы уверены, что хотите завершить тест?')">
+                    <i class="fas fa-check"></i> Завершить тест
+                </button>
+                <a asp-action="DisciplineDetails" asp-route-id="@Model.DisciplineId" class="btn btn-secondary">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Таймер для теста
+    let timeLeft = @Model.DurationMinutes * 60;
+    const timerElement = document.createElement('div');
+    timerElement.className = 'alert alert-warning fixed-top mt-2 mx-3';
+    timerElement.style.zIndex = '1000';
+    timerElement.style.maxWidth = '200px';
+    timerElement.style.right = '0';
+    timerElement.style.left = 'auto';
+    document.body.prepend(timerElement);
+
+    function updateTimer() {
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        timerElement.innerHTML = `<i class="fas fa-clock"></i> Осталось: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            timerElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Время вышло! Тест будет отправлен.';
+            setTimeout(() => {
+                document.getElementById('testForm').submit();
+            }, 2000);
+        }
+        timeLeft--;
+    }
+
+    const timerInterval = setInterval(updateTimer, 1000);
+    updateTimer();
+</script>

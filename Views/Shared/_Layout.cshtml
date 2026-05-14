@@ -135,6 +135,16 @@
                             <i class="fas fa-user-shield"></i>
                             <span>Создать администратора</span>
                         </a>
+
+                        <div class="sidebar-divider"></div>
+                        <div class="sidebar-title">Платформа</div>
+                    <li class="sidebar-item">
+                        <a class="sidebar-link" asp-controller="Admin" asp-action="IndexDisc">
+                            <i class="fas fa-book-open"></i>
+                            <span>Платформа</span>
+                        </a>
+
+                    </li>
                     </li>
                     <div class="sidebar-divider"></div>
                     <div class="sidebar-title">Настройки</div>
@@ -152,6 +162,8 @@
                             <span>Обратная связь</span>
                         </a>
                     </li>
+
+
                 }
 
                 @if (isLecturer)
@@ -167,22 +179,28 @@
                 }
 
                 @if (isStudent && hasGroup)
-                {
-                    <div class="sidebar-divider"></div>
-                    <div class="sidebar-title">Студенту</div>
-                    <li class="sidebar-item">
-                        <a class="sidebar-link" asp-controller="Student" asp-action="MyDisciplines">
-                            <i class="fas fa-book"></i>
-                            <span>Мои дисциплины</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a class="sidebar-link" asp-controller="Student" asp-action="MyTests">
-                            <i class="fas fa-tasks"></i>
-                            <span>Мои тесты</span>
-                        </a>
-                    </li>
-                }
+{
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-title">Студенту</div>
+    <li class="sidebar-item">
+        <a class="sidebar-link" asp-controller="Student" asp-action="MyDisciplines">
+            <i class="fas fa-book"></i>
+            <span>Мои дисциплины</span>
+        </a>
+    </li>
+    <li class="sidebar-item">
+        <a class="sidebar-link" asp-controller="Student" asp-action="MyResults">
+            <i class="fas fa-chart-line"></i>
+            <span>Мои результаты</span>
+        </a>
+    </li>
+    <li class="sidebar-item">
+        <a class="sidebar-link" asp-controller="Student" asp-action="Feedback">
+            <i class="fas fa-comment-dots"></i>
+            <span>Обратная связь</span>
+        </a>
+    </li>
+}
                 else if (isStudent && !hasGroup)
                 {
                     <div class="sidebar-divider"></div>

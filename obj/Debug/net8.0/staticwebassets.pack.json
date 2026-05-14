@@ -5,12 +5,24 @@
       "PackagePath": "staticwebassets\\diplom.bundle.scp.css"
     },
     {
+      "Id": "C:\\distant\\new\\diplom\\wwwroot\\css\\mobile.css",
+      "PackagePath": "staticwebassets\\css\\mobile.css"
+    },
+    {
       "Id": "C:\\distant\\new\\diplom\\wwwroot\\css\\site.css",
       "PackagePath": "staticwebassets\\css\\site.css"
     },
     {
       "Id": "C:\\distant\\new\\diplom\\wwwroot\\favicon.ico",
       "PackagePath": "staticwebassets\\favicon.ico"
+    },
+    {
+      "Id": "C:\\distant\\new\\diplom\\wwwroot\\js.cs",
+      "PackagePath": "staticwebassets\\js.cs"
+    },
+    {
+      "Id": "C:\\distant\\new\\diplom\\wwwroot\\js\\mobile-menu.js",
+      "PackagePath": "staticwebassets\\js\\mobile-menu.js"
     },
     {
       "Id": "C:\\distant\\new\\diplom\\wwwroot\\js\\site.js",
@@ -247,14 +259,6 @@
     {
       "Id": "C:\\distant\\new\\diplom\\wwwroot\\uploads\\375534e0-7bfe-4295-817f-7cdb20df2c37.txt",
       "PackagePath": "staticwebassets\\uploads\\375534e0-7bfe-4295-817f-7cdb20df2c37.txt"
-    },
-    {
-      "Id": "C:\\distant\\new\\diplom\\wwwroot\\uploads\\38eaa9b2-1f56-453f-844e-e794d86fcf9d.docx",
-      "PackagePath": "staticwebassets\\uploads\\38eaa9b2-1f56-453f-844e-e794d86fcf9d.docx"
-    },
-    {
-      "Id": "C:\\distant\\new\\diplom\\wwwroot\\uploads\\6caea24f-df4a-485f-b86d-28407b2c3544.txt",
-      "PackagePath": "staticwebassets\\uploads\\6caea24f-df4a-485f-b86d-28407b2c3544.txt"
     },
     {
       "Id": "C:\\distant\\new\\diplom\\wwwroot\\uploads\\929e178d-36ba-4938-8f69-77e70f97281b.txt",

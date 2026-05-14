@@ -7,6 +7,7 @@ using diplom.Models;
 using diplom.ViewModels;
 using diplom.Data;
 using System.Security.Claims;
+using diplom.Services;
 
 namespace diplom.Controllers
 {
@@ -18,17 +19,23 @@ namespace diplom.Controllers
         private readonly RoleManager<IdentityRole<int>> _roleManager;
         private readonly AppDbContext _context;
         private readonly ILogger<AdminController> _logger;
+        private readonly IWebHostEnvironment _env;
+        private readonly IRagService _ragService;
 
         public AdminController(
             UserManager<User> userManager,
             RoleManager<IdentityRole<int>> roleManager,
             AppDbContext context,
-            ILogger<AdminController> logger)
+            ILogger<AdminController> logger,
+            IWebHostEnvironment env,           // Добавить
+        IRagService ragService)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _context = context;
             _logger = logger;
+            _env = env;                        // Добавить
+            _ragService = ragService;
         }
 
         // ==================== УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ ====================
@@ -872,5 +879,815 @@ namespace diplom.Controllers
 
             return View(model);
         }
+
+
+
+
+
+
+
+        // ==================== УПРАВЛЕНИЕ ДИСЦИПЛИНАМИ (ПОЛНЫЙ ФУНКЦИОНАЛ) ====================
+        // ==================== ВСЕ ДИСЦИПЛИНЫ (КАК У ЛЕКТОРА, НО ДЛЯ АДМИНА) ====================
+
+       [HttpGet]
+public async Task<IActionResult> IndexDisc()
+{
+    // Получаем ВСЕ дисциплины
+    var disciplines = await _context.Disciplines
+        .Include(d => d.Course)
+        .Include(d => d.DisciplineLecturers)
+            .ThenInclude(dl => dl.Lecturer)
+        .OrderBy(d => d.Name)
+        .ToListAsync();
+
+    // Получаем ВСЕ курсы (даже те, у которых нет дисциплин)
+    var allCourses = await _context.Courses
+        .OrderBy(c => c.Code)
+        .ToListAsync();
+
+    // Передаем данные для модального окна создания
+    ViewBag.CoursesList = allCourses;
+
+    // Получаем всех пользователей для выбора преподавателей
+    var allUsers = await _context.Users.ToListAsync();
+    ViewBag.Lecturers = new SelectList(allUsers, "Id", "FullName");
+
+            // Группируем дисциплины по курсам (исправлено: убрали .HasValue)
+            // Группируем дисциплины по курсам (для int, не nullable)
+            var disciplinesByCourse = disciplines
+                .Where(d => d.CourseId > 0) // Просто проверяем, что ID > 0
+                .GroupBy(d => d.CourseId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            // Передаем в представление словарь дисциплин
+            ViewBag.DisciplinesByCourse = disciplinesByCourse;
+    
+    return View(allCourses);
+}
+        // Метод для создания дисциплины (из модального окна)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateDisciplineFromModal(string Name, string Description, int CourseId, int CourseNumber, int Semester, int[] LecturerIds)
+        {
+            if (string.IsNullOrEmpty(Name))
+            {
+                TempData["ErrorMessage"] = "Название дисциплины обязательно";
+                TempData["OpenCreateModal"] = true;
+                return RedirectToAction(nameof(IndexDisc));
+            }
+
+            try
+            {
+                var discipline = new Discipline
+                {
+                    Name = Name,
+                    Description = Description ?? "",
+                    CourseId = CourseId,
+                    CourseNumber = CourseNumber,
+                    Semester = Semester,
+                    DisciplineLecturers = new List<DisciplineLecturer>()
+                };
+
+                // Добавляем выбранных преподавателей
+                if (LecturerIds != null && LecturerIds.Any())
+                {
+                    foreach (var lecturerId in LecturerIds)
+                    {
+                        discipline.DisciplineLecturers.Add(new DisciplineLecturer
+                        {
+                            LecturerId = lecturerId,
+                            Discipline = discipline
+                        });
+                    }
+                }
+
+                _context.Disciplines.Add(discipline);
+                await _context.SaveChangesAsync();
+
+                TempData["SuccessMessage"] = $"Дисциплина \"{Name}\" успешно создана";
+                return RedirectToAction(nameof(IndexDisc));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при создании дисциплины");
+                TempData["ErrorMessage"] = $"Ошибка: {ex.Message}";
+                TempData["OpenCreateModal"] = true;
+                return RedirectToAction(nameof(IndexDisc));
+            }
+        }
+
+        // Просмотр дисциплины (единый метод)
+        [HttpGet]
+        public async Task<IActionResult> DisciplineDetails(int id)
+        {
+            try
+            {
+                var discipline = await _context.Disciplines
+                    .Include(d => d.Course)
+                    .Include(d => d.DisciplineLecturers)
+                        .ThenInclude(dl => dl.Lecturer)
+                    .Include(d => d.Sections.OrderBy(s => s.Order))
+                        .ThenInclude(s => s.Materials)
+                    .Include(d => d.Sections)
+                        .ThenInclude(s => s.Tests)
+                            .ThenInclude(t => t.Questions)
+                    .FirstOrDefaultAsync(d => d.Id == id);
+
+                if (discipline == null)
+                {
+                    TempData["ErrorMessage"] = "Дисциплина не найдена";
+                    return RedirectToAction(nameof(IndexDisc));
+                }
+
+                return View(discipline);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка в Details");
+                TempData["ErrorMessage"] = "Произошла ошибка при загрузке дисциплины";
+                return RedirectToAction(nameof(IndexDisc));
+            }
+        }
+
+        // Редактирование дисциплины (полная версия как у лектора)
+        [HttpGet]
+        public async Task<IActionResult> Edit(int id)
+        {
+            var discipline = await _context.Disciplines
+                .Include(d => d.DisciplineLecturers)
+                .Include(d => d.OpenGroups)
+                .Include(d => d.Sections.OrderBy(s => s.Order))
+                    .ThenInclude(s => s.Materials)
+                .Include(d => d.Sections)
+                    .ThenInclude(s => s.Tests)
+                        .ThenInclude(t => t.Questions)
+                .FirstOrDefaultAsync(d => d.Id == id);
+
+            if (discipline == null)
+            {
+                return NotFound();
+            }
+
+            ViewBag.Courses = new SelectList(await _context.Courses.ToListAsync(), "Id", "Name", discipline.CourseId);
+            ViewBag.Sections = discipline.Sections;
+
+            var courseGroups = await _context.StudentGroups
+                .Where(g => g.CourseId == discipline.CourseId)
+                .Include(g => g.Students)
+                .ToListAsync();
+
+            var openGroupIds = discipline.OpenGroups.Select(g => g.Id).ToHashSet();
+
+            var model = new EditDisciplineViewModel
+            {
+                Id = discipline.Id,
+                Name = discipline.Name,
+                Description = discipline.Description,
+                CourseId = discipline.CourseId,
+                CourseNumber = discipline.CourseNumber,
+                Semester = discipline.Semester,
+                Groups = courseGroups.Select(g => new GroupAccessViewModel
+                {
+                    GroupId = g.Id,
+                    GroupName = g.Name,
+                    StudentCount = g.Students?.Count ?? 0,
+                    IsOpen = openGroupIds.Contains(g.Id)
+                }).ToList()
+            };
+
+            return View(model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, EditDisciplineViewModel model)
+        {
+            if (id != model.Id)
+            {
+                return NotFound();
+            }
+
+            var discipline = await _context.Disciplines
+                .Include(d => d.DisciplineLecturers)
+                .Include(d => d.OpenGroups)
+                .FirstOrDefaultAsync(d => d.Id == id);
+
+            if (discipline == null)
+            {
+                return NotFound();
+            }
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    discipline.Name = model.Name;
+                    discipline.Description = model.Description;
+                    discipline.CourseId = model.CourseId;
+                    discipline.CourseNumber = model.CourseNumber;
+                    discipline.Semester = model.Semester;
+
+                    discipline.OpenGroups.Clear();
+                    foreach (var group in model.Groups.Where(g => g.IsOpen))
+                    {
+                        var dbGroup = await _context.StudentGroups.FindAsync(group.GroupId);
+                        if (dbGroup != null)
+                        {
+                            discipline.OpenGroups.Add(dbGroup);
+                        }
+                    }
+
+                    await _context.SaveChangesAsync();
+                    TempData["SuccessMessage"] = "Изменения сохранены";
+                    return RedirectToAction(nameof(DisciplineDetails), new { id = discipline.Id });
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!_context.Disciplines.Any(e => e.Id == id))
+                    {
+                        return NotFound();
+                    }
+                    throw;
+                }
+            }
+
+            ViewBag.Courses = new SelectList(await _context.Courses.ToListAsync(), "Id", "Name", model.CourseId);
+            return View(model);
+        }
+
+        // ==================== УПРАВЛЕНИЕ РАЗДЕЛАМИ ====================
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddSection(int disciplineId, string name, string description)
+        {
+            try
+            {
+                var maxOrder = await _context.Sections
+                    .Where(s => s.DisciplineId == disciplineId)
+                    .MaxAsync(s => (int?)s.Order) ?? 0;
+
+                var section = new Section
+                {
+                    Name = name,
+                    Description = description,
+                    DisciplineId = disciplineId,
+                    Order = maxOrder + 1
+                };
+
+                _context.Sections.Add(section);
+                await _context.SaveChangesAsync();
+
+                TempData["SuccessMessage"] = $"Раздел \"{name}\" успешно создан!";
+                return RedirectToAction(nameof(DisciplineDetails), new { id = disciplineId });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при создании раздела");
+                TempData["ErrorMessage"] = $"Ошибка: {ex.Message}";
+                return RedirectToAction(nameof(DisciplineDetails), new { id = disciplineId });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> EditSection(int id)
+        {
+            var section = await _context.Sections
+                .Include(s => s.Discipline)
+                .FirstOrDefaultAsync(s => s.Id == id);
+
+            if (section == null)
+            {
+                return NotFound();
+            }
+
+            return View(section);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditSection(int id, string name, string description)
+        {
+            var section = await _context.Sections
+                .Include(s => s.Discipline)
+                .FirstOrDefaultAsync(s => s.Id == id);
+
+            if (section == null)
+            {
+                return NotFound();
+            }
+
+            if (string.IsNullOrEmpty(name))
+            {
+                TempData["ErrorMessage"] = "Название раздела обязательно";
+                return RedirectToAction(nameof(EditSection), new { id });
+            }
+
+            section.Name = name;
+            section.Description = description;
+
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Раздел успешно обновлен";
+            return RedirectToAction(nameof(DisciplineDetails), new { id = section.DisciplineId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteSection(int id)
+        {
+            var section = await _context.Sections
+                .Include(s => s.Materials)
+                .Include(s => s.Tests)
+                .FirstOrDefaultAsync(s => s.Id == id);
+
+            if (section == null)
+            {
+                return Json(new { success = false, message = "Раздел не найден" });
+            }
+
+            var disciplineId = section.DisciplineId;
+
+            // Удаляем все материалы раздела
+            if (section.Materials != null && section.Materials.Any())
+            {
+                // Сначала удаляем индексы материалов
+                foreach (var material in section.Materials)
+                {
+                    if (material.IsIndexed)
+                    {
+                        await _ragService.DeleteMaterialIndexAsync(material.Id);
+                    }
+
+                    // Удаляем файлы
+                    if (!string.IsNullOrEmpty(material.FilePath))
+                    {
+                        var fullPath = Path.Combine(_env.WebRootPath ?? _env.ContentRootPath, material.FilePath.TrimStart('/'));
+                        if (System.IO.File.Exists(fullPath))
+                        {
+                            System.IO.File.Delete(fullPath);
+                        }
+                    }
+                }
+                _context.Materials.RemoveRange(section.Materials);
+            }
+
+            // Удаляем все тесты раздела
+            if (section.Tests != null && section.Tests.Any())
+            {
+                _context.Tests.RemoveRange(section.Tests);
+            }
+
+            _context.Sections.Remove(section);
+            await _context.SaveChangesAsync();
+
+            // Перенумеровываем порядок оставшихся разделов
+            var remainingSections = await _context.Sections
+                .Where(s => s.DisciplineId == disciplineId)
+                .OrderBy(s => s.Order)
+                .ToListAsync();
+
+            for (int i = 0; i < remainingSections.Count; i++)
+            {
+                remainingSections[i].Order = i + 1;
+            }
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Раздел и все его содержимое успешно удалены";
+            return Json(new { success = true, redirect = Url.Action("Edit", new { id = disciplineId }) });
+        }
+
+        // ==================== УПРАВЛЕНИЕ МАТЕРИАЛАМИ ====================
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddMaterialToSection(int disciplineId, int sectionId, string title, string content, bool isIndexed)
+        {
+            try
+            {
+                var material = new Material
+                {
+                    Title = title,
+                    Content = content ?? "",
+                    DisciplineId = disciplineId,
+                    SectionId = sectionId,
+                    UploadedAt = DateTime.UtcNow,
+                    IsIndexed = isIndexed,
+                    IsVisible = true
+                };
+
+                _context.Materials.Add(material);
+                await _context.SaveChangesAsync();
+
+                if (isIndexed)
+                {
+                    await _ragService.IndexMaterialAsync(material);
+                }
+
+                TempData["SuccessMessage"] = $"Материал \"{title}\" успешно добавлен!";
+                return RedirectToAction(nameof(DisciplineDetails), new { id = disciplineId });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при добавлении материала");
+                TempData["ErrorMessage"] = $"Ошибка: {ex.Message}";
+                return RedirectToAction(nameof(DisciplineDetails), new { id = disciplineId });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> EditMaterial(int id)
+        {
+            var material = await _context.Materials
+                .Include(m => m.Section)
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (material == null)
+            {
+                return NotFound();
+            }
+
+            return View(material);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditMaterial(int id, string title, string content, bool isVisible)
+        {
+            var material = await _context.Materials.FindAsync(id);
+
+            if (material == null)
+            {
+                return NotFound();
+            }
+
+            if (string.IsNullOrEmpty(title))
+            {
+                TempData["ErrorMessage"] = "Название материала обязательно";
+                return RedirectToAction(nameof(EditMaterial), new { id });
+            }
+
+            material.Title = title;
+            material.Content = content ?? "";
+            material.IsVisible = isVisible;
+
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Материал успешно обновлен";
+            return RedirectToAction(nameof(DisciplineDetails), new { id = material.DisciplineId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteMaterial(int id)
+        {
+            var material = await _context.Materials
+                .Include(m => m.Discipline)
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (material == null)
+            {
+                return Json(new { success = false, message = "Материал не найден" });
+            }
+
+            var disciplineId = material.DisciplineId;
+
+            // Удаляем файл с диска
+            if (!string.IsNullOrEmpty(material.FilePath))
+            {
+                var fullPath = Path.Combine(_env.WebRootPath ?? _env.ContentRootPath, material.FilePath.TrimStart('/'));
+                if (System.IO.File.Exists(fullPath))
+                {
+                    System.IO.File.Delete(fullPath);
+                }
+            }
+
+            // Удаляем индексы из RAG
+            if (material.IsIndexed)
+            {
+                await _ragService.DeleteMaterialIndexAsync(material.Id);
+            }
+
+            // Удаляем материал из БД
+            _context.Materials.Remove(material);
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Материал успешно удален";
+
+            // Возвращаем JSON для AJAX запроса
+            return Json(new { success = true, redirect = Url.Action("Edit", new { id = disciplineId }) });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteMaterialFile(int id)
+        {
+            var material = await _context.Materials.FindAsync(id);
+
+            if (material == null)
+            {
+                return Json(new { success = false, message = "Материал не найден" });
+            }
+
+            try
+            {
+                if (!string.IsNullOrEmpty(material.FilePath))
+                {
+                    var fullPath = Path.Combine(_env.WebRootPath, material.FilePath.TrimStart('/'));
+                    if (System.IO.File.Exists(fullPath))
+                    {
+                        System.IO.File.Delete(fullPath);
+                    }
+                }
+
+                material.FilePath = null;
+                material.FileType = null;
+                await _context.SaveChangesAsync();
+
+                return Json(new { success = true, message = "Файл удален" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при удалении файла");
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        // ==================== УПРАВЛЕНИЕ ТЕСТАМИ ====================
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddTestToSection(int disciplineId, int sectionId, string title, string description, int durationMinutes, int maxScore, DateTime? deadline)
+        {
+            try
+            {
+                var test = new Test
+                {
+                    Title = title,
+                    Description = description ?? "",
+                    DurationMinutes = durationMinutes,
+                    MaxScore = maxScore,
+                    Deadline = deadline,
+                    DisciplineId = disciplineId,
+                    SectionId = sectionId,
+                    IsPublished = false,
+                    IsVisible = true
+                };
+
+                _context.Tests.Add(test);
+                await _context.SaveChangesAsync();
+
+                TempData["SuccessMessage"] = $"Тест \"{title}\" успешно создан!";
+                return RedirectToAction(nameof(DisciplineDetails), new { id = disciplineId });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при создании теста");
+                TempData["ErrorMessage"] = $"Ошибка: {ex.Message}";
+                return RedirectToAction(nameof(DisciplineDetails), new { id = disciplineId });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> EditTest(int id)
+        {
+            var test = await _context.Tests
+                .Include(t => t.Questions)
+                .Include(t => t.Section)
+                .FirstOrDefaultAsync(t => t.Id == id);
+
+            if (test == null)
+            {
+                return NotFound();
+            }
+
+            return View(test);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditTest(int id, string title, string description, int durationMinutes, int maxScore, DateTime? deadline, bool isPublished, bool isVisible)
+        {
+            var test = await _context.Tests.FindAsync(id);
+
+            if (test == null)
+            {
+                return NotFound();
+            }
+
+            if (string.IsNullOrEmpty(title))
+            {
+                TempData["ErrorMessage"] = "Название теста обязательно";
+                return RedirectToAction(nameof(EditTest), new { id });
+            }
+
+            test.Title = title;
+            test.Description = description ?? "";
+            test.DurationMinutes = durationMinutes;
+            test.MaxScore = maxScore;
+            test.Deadline = deadline;
+            test.IsPublished = isPublished;
+            test.IsVisible = isVisible;
+
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Тест успешно обновлен";
+            return RedirectToAction(nameof(DisciplineDetails), new { id = test.DisciplineId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteTest(int id)
+        {
+            var test = await _context.Tests
+                .Include(t => t.Questions)
+                .FirstOrDefaultAsync(t => t.Id == id);
+
+            if (test == null)
+            {
+                return Json(new { success = false, message = "Тест не найден" });
+            }
+
+            var disciplineId = test.DisciplineId;
+
+            // Удаляем все вопросы теста
+            if (test.Questions != null && test.Questions.Any())
+            {
+                _context.Questions.RemoveRange(test.Questions);
+            }
+
+            _context.Tests.Remove(test);
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Тест успешно удален";
+            return Json(new { success = true, redirect = Url.Action("Edit", new { id = disciplineId }) });
+        }
+
+        // ==================== УПРАВЛЕНИЕ ВОПРОСАМИ ====================
+
+        [HttpGet]
+        public async Task<IActionResult> AddQuestion(int testId)
+        {
+            var test = await _context.Tests.FindAsync(testId);
+            if (test == null)
+            {
+                return NotFound();
+            }
+
+            ViewBag.TestId = testId;
+            ViewBag.TestTitle = test.Title;
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddQuestion(int testId, string text, string optionsJson, string correctAnswer, int points)
+        {
+            var test = await _context.Tests.FindAsync(testId);
+            if (test == null)
+            {
+                return NotFound();
+            }
+
+            if (string.IsNullOrEmpty(text))
+            {
+                TempData["ErrorMessage"] = "Текст вопроса обязателен";
+                return RedirectToAction(nameof(AddQuestion), new { testId });
+            }
+
+            var question = new Question
+            {
+                Text = text,
+                OptionsJson = string.IsNullOrEmpty(optionsJson) ? null : optionsJson,
+                CorrectAnswer = correctAnswer ?? "",
+                Points = points > 0 ? points : 1,
+                TestId = testId
+            };
+
+            _context.Questions.Add(question);
+            await _context.SaveChangesAsync();
+
+            test.MaxScore = await _context.Questions.Where(q => q.TestId == testId).SumAsync(q => q.Points);
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Вопрос успешно добавлен";
+            return RedirectToAction(nameof(EditTest), new { id = testId });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> EditQuestion(int id)
+        {
+            var question = await _context.Questions
+                .Include(q => q.Test)
+                .FirstOrDefaultAsync(q => q.Id == id);
+
+            if (question == null)
+            {
+                return NotFound();
+            }
+
+            return View(question);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditQuestion(int id, string text, string optionsJson, string correctAnswer, int points)
+        {
+            var question = await _context.Questions
+                .Include(q => q.Test)
+                .FirstOrDefaultAsync(q => q.Id == id);
+
+            if (question == null)
+            {
+                return NotFound();
+            }
+
+            if (string.IsNullOrEmpty(text))
+            {
+                TempData["ErrorMessage"] = "Текст вопроса обязателен";
+                return RedirectToAction(nameof(EditQuestion), new { id });
+            }
+
+            question.Text = text;
+            question.OptionsJson = optionsJson;
+            question.CorrectAnswer = correctAnswer;
+            question.Points = points > 0 ? points : 1;
+
+            await _context.SaveChangesAsync();
+
+            var test = question.Test;
+            test.MaxScore = await _context.Questions.Where(q => q.TestId == test.Id).SumAsync(q => q.Points);
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "Вопрос успешно обновлен";
+            return RedirectToAction(nameof(EditTest), new { id = question.TestId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteQuestion(int id)
+        {
+            var question = await _context.Questions
+                .Include(q => q.Test)
+                .FirstOrDefaultAsync(q => q.Id == id);
+
+            if (question == null)
+            {
+                return Json(new { success = false, message = "Вопрос не найден" });
+            }
+
+            var testId = question.TestId;
+            _context.Questions.Remove(question);
+            await _context.SaveChangesAsync();
+
+            // Обновляем максимальный балл теста
+            var test = question.Test;
+            if (test != null)
+            {
+                test.MaxScore = await _context.Questions.Where(q => q.TestId == test.Id).SumAsync(q => q.Points);
+                await _context.SaveChangesAsync();
+            }
+
+            TempData["SuccessMessage"] = "Вопрос успешно удален";
+            return Json(new { success = true, redirect = Url.Action("EditTest", new { id = testId }) });
+        }
+
+        // ==================== УПРАВЛЕНИЕ ДОСТУПОМ ГРУПП (AJAX) ====================
+
+        [HttpPost]
+        public async Task<IActionResult> ToggleGroupAccess(int disciplineId, int groupId, bool isOpen)
+        {
+            var discipline = await _context.Disciplines
+                .Include(d => d.OpenGroups)
+                .FirstOrDefaultAsync(d => d.Id == disciplineId);
+
+            if (discipline == null)
+            {
+                return Json(new { success = false, message = "Дисциплина не найдена" });
+            }
+
+            var group = await _context.StudentGroups.FindAsync(groupId);
+            if (group == null)
+            {
+                return Json(new { success = false, message = "Группа не найдена" });
+            }
+
+            if (isOpen && !discipline.OpenGroups.Contains(group))
+            {
+                discipline.OpenGroups.Add(group);
+                await _context.SaveChangesAsync();
+                return Json(new { success = true, message = $"Группа {group.Name} добавлена" });
+            }
+            else if (!isOpen && discipline.OpenGroups.Contains(group))
+            {
+                discipline.OpenGroups.Remove(group);
+                await _context.SaveChangesAsync();
+                return Json(new { success = true, message = $"Группа {group.Name} удалена" });
+            }
+
+            return Json(new { success = true, message = "Изменений не требуется" });
+        }
     }
+
+
 }

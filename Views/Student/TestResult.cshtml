@@ -1,0 +1,62 @@
+﻿@model diplom.Models.TestResult
+
+@{
+    ViewData["Title"] = "Результат теста";
+    var answers = ViewBag.Answers as Dictionary<int, string> ?? new Dictionary<int, string>();
+    var questions = ViewBag.Questions as List<diplom.Models.Question> ?? new List<diplom.Models.Question>();
+    var percentage = (double)Model.Score / Model.MaxScore * 100;
+    var gradeClass = percentage >= 85 ? "success" : percentage >= 70 ? "info" : percentage >= 50 ? "warning" : "danger";
+}
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="mb-0"><i class="fas fa-chart-line"></i> Результат: @Model.Test.Title</h3>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-@gradeClass text-center">
+            <h4>Ваш результат: @Model.Score из @Model.MaxScore баллов</h4>
+            <h2>@percentage.ToString("F1")%</h2>
+        </div>
+
+        <h5>Детали ответов</h5>
+        @foreach (var question in questions)
+        {
+            var userAnswer = answers.ContainsKey(question.Id) ? answers[question.Id] : "(нет ответа)";
+            var isCorrect = !string.IsNullOrEmpty(userAnswer) &&
+            (question.OptionsJson != null ?
+            userAnswer.Equals(question.CorrectAnswer, StringComparison.OrdinalIgnoreCase) :
+            userAnswer.Trim().Equals(question.CorrectAnswer.Trim(), StringComparison.OrdinalIgnoreCase));
+
+            <div class="card mb-2 @(isCorrect ? "border-success" : "border-danger")">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <strong>@question.Text</strong>
+                        <span class="badge @(isCorrect ? "bg-success" : "bg-danger")">@(isCorrect ? $"+{question.Points} баллов" : "0 баллов")</span>
+                    </div>
+                    <div class="mt-2">
+                        <small class="text-muted">Ваш ответ:</small>
+                        <div class="alert alert-sm @(isCorrect ? "alert-success" : "alert-danger") mb-0 mt-1">
+                            @if (string.IsNullOrEmpty(userAnswer))
+                            {
+                                <em>Ответ не дан</em>
+                            }
+                            else
+                            {
+                                @userAnswer
+                            }
+                        </div>
+                        @if (!isCorrect)
+                        {
+                            <small class="text-success mt-1 d-block">Правильный ответ: @question.CorrectAnswer</small>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="mt-3">
+            <a asp-action="MyResults" class="btn btn-primary">К списку результатов</a>
+            <a asp-action="DisciplineDetails" asp-route-id="@Model.Test.DisciplineId" class="btn btn-secondary">К дисциплине</a>
+        </div>
+    </div>
+</div>

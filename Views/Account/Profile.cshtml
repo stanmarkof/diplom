@@ -4,86 +4,201 @@
     ViewData["Title"] = "Мой профиль";
 }
 
-<div class="container mt-5 fade-in">
-    <div class="profile-header">
-        <i class="fas fa-user-circle fa-5x"></i>
-        <h2>@Model.LastName @Model.FirstName @Model.MiddleName</h2>
-        <p class="mb-0">@Model.Role</p>
-    </div>
-
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="profile-info">
-                <div class="profile-info-item">
-                    <div class="row">
-                        <div class="col-md-3 profile-info-label">Логин:</div>
-                        <div class="col-md-9">@Model.UserName</div>
+<div class="container py-4">
+    <!-- Карточка профиля -->
+    <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+        <!-- Шапка с градиентом -->
+        <div class="card-header bg-gradient-primary text-white py-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="d-flex align-items-center">
+                <div class="flex-shrink-0">
+                    <div class="bg-white bg-opacity-25 rounded-circle p-3">
+                        <i class="fas fa-user-circle fa-4x text-white"></i>
                     </div>
                 </div>
-
-                <div class="profile-info-item">
-                    <div class="row">
-                        <div class="col-md-3 profile-info-label">Email:</div>
-                        <div class="col-md-9">@Model.Email</div>
-                    </div>
+                <div class="flex-grow-1 ms-4">
+                    <h2 class="mb-0 fw-bold">@Model.LastName @Model.FirstName @Model.MiddleName</h2>
+                    <p class="mb-0 mt-2 opacity-75">
+                        <i class="fas fa-tag me-1"></i> @Model.Role
+                    </p>
                 </div>
+            </div>
+        </div>
 
-                @if (Model.Role == "Student")
-                {
-                    <div class="profile-info-item">
-                        <div class="row">
-                            <div class="col-md-3 profile-info-label">Группа:</div>
-                            <div class="col-md-9">
-                                @if (Model.HasGroup)
-                                {
-                                    <span class="badge bg-success">@Model.GroupName</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-warning">Группа не назначена</span>
-                                    <small class="text-muted d-block mt-1">Дождитесь назначения группы администратором</small>
-                                }
+        <!-- Тело карточки -->
+        <div class="card-body p-4">
+            <div class="row g-4">
+                <!-- Левая колонка - информация -->
+                <div class="col-lg-7">
+                    <h5 class="mb-3 pb-2 border-bottom">
+                        <i class="fas fa-info-circle text-primary me-2"></i>Личная информация
+                    </h5>
+
+                    <div class="vstack gap-3">
+                        <!-- Логин -->
+                        <div class="d-flex align-items-center p-2 rounded-3 bg-light">
+                            <div class="icon-box me-3 text-primary">
+                                <i class="fas fa-user fa-fw"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <small class="text-muted d-block">Логин</small>
+                                <span class="fw-semibold">@Model.UserName</span>
                             </div>
                         </div>
-                    </div>
-                }
 
-                @if (!string.IsNullOrEmpty(Model.Department))
-                {
-                    <div class="profile-info-item">
-                        <div class="row">
-                            <div class="col-md-3 profile-info-label">Кафедра:</div>
-                            <div class="col-md-9">@Model.Department</div>
+                        <!-- Email -->
+                        <div class="d-flex align-items-center p-2 rounded-3 bg-light">
+                            <div class="icon-box me-3 text-primary">
+                                <i class="fas fa-envelope fa-fw"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <small class="text-muted d-block">Email</small>
+                                <span class="fw-semibold">@Model.Email</span>
+                            </div>
                         </div>
-                    </div>
-                }
 
-                @if (!string.IsNullOrEmpty(Model.Position))
-                {
-                    <div class="profile-info-item">
-                        <div class="row">
-                            <div class="col-md-3 profile-info-label">Должность:</div>
-                            <div class="col-md-9">@Model.Position</div>
-                        </div>
+                        <!-- Группа (для студента) -->
+                        @if (Model.Role == "Student")
+                        {
+                            <div class="d-flex align-items-center p-2 rounded-3 bg-light">
+                                <div class="icon-box me-3 text-primary">
+                                    <i class="fas fa-users fa-fw"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <small class="text-muted d-block">Группа</small>
+                                    @if (Model.HasGroup)
+                                    {
+                                        <span class="badge bg-success px-3 py-2">@Model.GroupName</span>
+                                    }
+                                    else
+                                    {
+                                        <div>
+                                            <span class="badge bg-warning text-dark px-3 py-2">Группа не назначена</span>
+                                            <small class="text-muted d-block mt-1">Дождитесь назначения группы администратором</small>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        <!-- Кафедра -->
+                        @if (!string.IsNullOrEmpty(Model.Department))
+                        {
+                            <div class="d-flex align-items-center p-2 rounded-3 bg-light">
+                                <div class="icon-box me-3 text-primary">
+                                    <i class="fas fa-building fa-fw"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <small class="text-muted d-block">Кафедра</small>
+                                    <span class="fw-semibold">@Model.Department</span>
+                                </div>
+                            </div>
+                        }
+
+                        <!-- Должность -->
+                        @if (!string.IsNullOrEmpty(Model.Position))
+                        {
+                            <div class="d-flex align-items-center p-2 rounded-3 bg-light">
+                                <div class="icon-box me-3 text-primary">
+                                    <i class="fas fa-briefcase fa-fw"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <small class="text-muted d-block">Должность</small>
+                                    <span class="fw-semibold">@Model.Position</span>
+                                </div>
+                            </div>
+                        }
                     </div>
-                }
+                </div>
+
+                <!-- Правая колонка - дополнительные данные -->
+                <div class="col-lg-5">
+                    <h5 class="mb-3 pb-2 border-bottom">
+                        <i class="fas fa-chart-line text-primary me-2"></i>Статистика
+                    </h5>
+
+                    <div class="bg-gradient-light rounded-3 p-4 text-center" style="background: linear-gradient(135deg, #f5f7fa 0%, #f0f2f5 100%);">
+                        <i class="fas fa-graduation-cap fa-3x text-primary mb-3"></i>
+                        <h6 class="text-muted mb-2">Роль в системе</h6>
+                        <span class="badge bg-primary bg-opacity-10 text-primary px-4 py-2 fs-6 fw-semibold">
+                            @Model.Role
+                        </span>
+
+                        @if (Model.Role == "Student")
+                        {
+                            <hr class="my-3">
+                            <div class="mt-2">
+                                <i class="fas fa-clock text-muted me-1"></i>
+                                <small class="text-muted">
+                                    Статус:
+                                    @if (Model.HasGroup)
+                                    {
+                                        <span class="text-success fw-semibold">Активен</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-warning fw-semibold">Ожидание группы</span>
+                                    }
+                                </small>
+                            </div>
+                        }
+                    </div>
+                </div>
             </div>
+        </div>
 
-            <div class="mt-4 d-flex justify-content-between">
-                <a asp-action="Edit" class="btn btn-primary">Редактировать профиль</a>
-                <a asp-action="ChangePassword" class="btn btn-warning">Сменить пароль</a>
+        <!-- Футер с кнопками -->
+        <div class="card-footer bg-white border-top-0 p-4">
+            <div class="d-flex gap-3 justify-content-center flex-wrap">
+                <a asp-action="Edit" class="btn btn-primary px-4 py-2 rounded-pill">
+                    <i class="fas fa-edit me-2"></i>Редактировать профиль
+                </a>
+                <a asp-action="ChangePassword" class="btn btn-warning px-4 py-2 rounded-pill">
+                    <i class="fas fa-key me-2"></i>Сменить пароль
+                </a>
                 <form asp-action="Logout" method="post" class="d-inline">
-                    <button type="submit" class="btn btn-danger">Выйти</button>
+                    <button type="submit" class="btn btn-danger px-4 py-2 rounded-pill">
+                        <i class="fas fa-sign-out-alt me-2"></i>Выйти
+                    </button>
                 </form>
             </div>
         </div>
     </div>
+
+    <!-- Предупреждение для студента без группы -->
+    @if (User.IsInRole("Student") && !Model.HasGroup)
+    {
+        <div class="alert alert-warning alert-dismissible fade show mt-4 rounded-3 shadow-sm" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+                <div>
+                    <strong class="fs-6">Внимание!</strong><br>
+                    <span>Ваша группа ещё не назначена. Некоторые функции системы будут недоступны до назначения группы.</span>
+                </div>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+            </div>
+        </div>
+    }
 </div>
 
-@if (User.IsInRole("Student") && !Model.HasGroup)
-{
-    <div class="alert alert-warning text-center mt-3">
-        <i class="fas fa-info-circle"></i>
-        <strong>Внимание!</strong> Ваша группа ещё не назначена. Некоторые функции системы будут недоступны до назначения группы.
-    </div>
-}
+<style>
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .icon-box {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+    }
+
+    .rounded-4 {
+        border-radius: 1rem !important;
+    }
+
+    .rounded-3 {
+        border-radius: 0.75rem !important;
+    }
+</style>

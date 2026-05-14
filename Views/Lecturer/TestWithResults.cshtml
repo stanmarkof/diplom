@@ -1,0 +1,271 @@
+﻿@model diplom.Models.Test
+
+@{
+    ViewData["Title"] = $"{Model.Title} - результаты";
+    var results = Model.TestResults.OrderByDescending(r => r.CompletedAt).ToList();
+}
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <h3 class="mb-0"><i class="fas fa-tasks"></i> @Model.Title</h3>
+            <small class="text-muted">
+                <i class="fas fa-book-open"></i> @Model.Discipline?.Name
+                @if (Model.Section != null)
+                {
+                    <span> | <i class="fas fa-folder"></i> @Model.Section.Name</span>
+                }
+            </small>
+        </div>
+        <a asp-action="Details" asp-route-id="@Model.DisciplineId" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Назад к дисциплине
+        </a>
+    </div>
+    <div class="card-body">
+        <!-- Информация о тесте -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="info-box">
+                    <small class="text-muted">Длительность</small>
+                    <h5><i class="fas fa-clock"></i> @Model.DurationMinutes мин</h5>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="info-box">
+                    <small class="text-muted">Максимальный балл</small>
+                    <h5><i class="fas fa-star"></i> @Model.MaxScore</h5>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="info-box">
+                    <small class="text-muted">Вопросов</small>
+                    <h5><i class="fas fa-question-circle"></i> @Model.Questions.Count</h5>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="info-box">
+                    <small class="text-muted">Прошли тест</small>
+                    <h5><i class="fas fa-users"></i> @results.Count</h5>
+                </div>
+            </div>
+        </div>
+
+        @if (Model.Description != null)
+        {
+            <div class="alert alert-light">
+                <i class="fas fa-info-circle"></i> @Model.Description
+            </div>
+        }
+
+        <hr />
+
+        <!-- Результаты студентов -->
+        <h5 class="mb-3"><i class="fas fa-chart-line"></i> Результаты студентов</h5>
+
+        @if (results.Any())
+        {
+            <!-- Фильтры -->
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Фильтр по группе</label>
+                            <select id="groupFilter" class="form-select">
+                                <option value="">Все группы</option>
+                                @{
+                                    var groups = results.Select(r => r.Student?.StudentGroup?.Name).Where(g => !string.IsNullOrEmpty(g)).Distinct().OrderBy(g => g);
+                                }
+                                @foreach (var group in groups)
+                                {
+                                    <option value="@group">@group</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Поиск по студенту</label>
+                            <input type="text" id="searchInput" class="form-control" placeholder="Введите фамилию или имя..." />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Сортировка</label>
+                            <select id="sortOrder" class="form-select">
+                                <option value="newest">Сначала новые</option>
+                                <option value="oldest">Сначала старые</option>
+                                <option value="best">По убыванию баллов</option>
+                                <option value="worst">По возрастанию баллов</option>
+                                <option value="name">По имени студента (А-Я)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover" id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>Студент</th>
+                            <th>Группа</th>
+                            <th>Результат</th>
+                            <th>Процент</th>
+                            <th>Дата прохождения</th>
+                            <th>Действия</th>
+                        </thead>
+                        <tbody>
+                            @foreach (var result in results)
+                            {
+                                var percentage = (double)result.Score / result.MaxScore * 100;
+                                var gradeClass = percentage >= 85 ? "success" : percentage >= 70 ? "info" : percentage >= 50 ? "warning" : "danger";
+                                var groupName = result.Student?.StudentGroup?.Name ?? "Не назначена";
+
+                                <tr>
+                                 
+                                    <td>
+                                        <i class="fas fa-user-graduate me-1"></i>
+                                        @result.Student?.FullName
+                                    </td>
+                                    <td>@groupName</td>
+                                    <td>
+                                        <span class="fw-bold">@result.Score</span> из @result.MaxScore
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-@gradeClass">@percentage.ToString("F1")%</span>
+                                    </td>
+                                    <td>
+                                        <i class="fas fa-calendar-alt me-1"></i>
+                                        @result.CompletedAt.ToString("dd.MM.yyyy HH:mm")
+                                    </td>
+                                    <td>
+                                        <a asp-action="TestResultDetails" asp-route-id="@result.Id" class="btn btn-sm btn-info">
+                                            <i class="fas fa-eye"></i> Детали
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                
+            }
+            else
+            {
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle fa-2x mb-3 d-block"></i>
+                    <h4>Нет результатов</h4>
+                    <p class="mb-0">Студенты ещё не проходили этот тест.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .info-box {
+        background: #f8f9fa;
+        padding: 12px;
+        border-radius: 8px;
+        text-align: center;
+    }
+
+    .info-box h5 {
+        margin-bottom: 0;
+        margin-top: 5px;
+    }
+</style>
+
+<script>
+    // Фильтрация и сортировка
+    function filterAndSort() {
+        const groupFilter = document.getElementById('groupFilter')?.value || '';
+        const searchTerm = (document.getElementById('searchInput')?.value || '').toLowerCase();
+        const sortOrder = document.getElementById('sortOrder')?.value || 'newest';
+        
+        const rows = document.querySelectorAll('#resultsTable tbody tr');
+        const filteredRows = [];
+        
+        // Фильтрация
+        rows.forEach(row => {
+            const group = row.getAttribute('data-group') || '';
+            const student = row.getAttribute('data-student') || '';
+            
+            const groupMatch = !groupFilter || group === groupFilter;
+            const searchMatch = !searchTerm || student.toLowerCase().includes(searchTerm);
+            
+            if (groupMatch && searchMatch) {
+                filteredRows.push(row);
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Сортировка
+        filteredRows.forEach(row => row.style.display = '');
+        
+        filteredRows.sort((a, b) => {
+            switch (sortOrder) {
+                case 'newest':
+                    const dateA = new Date(a.getAttribute('data-date'));
+                    const dateB = new Date(b.getAttribute('data-date'));
+                    return dateB - dateA;
+                case 'oldest':
+                    const dateC = new Date(a.getAttribute('data-date'));
+                    const dateD = new Date(b.getAttribute('data-date'));
+                    return dateC - dateD;
+                case 'best':
+                    const scoreA = parseFloat(a.getAttribute('data-percentage') || 0);
+                    const scoreB = parseFloat(b.getAttribute('data-percentage') || 0);
+                    return scoreB - scoreA;
+                case 'worst':
+                    const scoreC = parseFloat(a.getAttribute('data-percentage') || 0);
+                    const scoreD = parseFloat(b.getAttribute('data-percentage') || 0);
+                    return scoreC - scoreD;
+                case 'name':
+                    const nameA = a.getAttribute('data-name') || '';
+                    const nameB = b.getAttribute('data-name') || '';
+                    return nameA.localeCompare(nameB);
+                default:
+                    return 0;
+            }
+        });
+        
+        // Перерисовка таблицы
+        const tbody = document.querySelector('#resultsTable tbody');
+        filteredRows.forEach(row => tbody.appendChild(row));
+        
+        // Обновление статистики
+        updateStats(filteredRows);
+    }
+    
+    function updateStats(filteredRows) {
+        let totalScore = 0;
+        let maxScore = 0;
+        let excellentCount = 0;
+        
+        filteredRows.forEach(row => {
+            const percentage = parseFloat(row.getAttribute('data-percentage') || 0);
+            totalScore += percentage;
+            maxScore = Math.max(maxScore, percentage);
+            if (percentage >= 85) excellentCount++;
+        });
+        
+        const avg = filteredRows.length > 0 ? (totalScore / filteredRows.length).toFixed(1) : '0';
+        
+        const avgElement = document.getElementById('avgScore');
+        const bestElement = document.getElementById('bestScore');
+        const totalElement = document.getElementById('totalCount');
+        const excellentElement = document.getElementById('excellentCount');
+        
+        if (avgElement) avgElement.innerText = avg + '%';
+        if (bestElement) bestElement.innerText = maxScore.toFixed(1) + '%';
+        if (totalElement) totalElement.innerText = filteredRows.length;
+        if (excellentElement) excellentElement.innerText = excellentCount;
+    }
+    
+    // Добавляем обработчики событий
+    document.getElementById('groupFilter')?.addEventListener('change', filterAndSort);
+    document.getElementById('searchInput')?.addEventListener('input', filterAndSort);
+    document.getElementById('sortOrder')?.addEventListener('change', filterAndSort);
+    
+    // Инициализация
+    filterAndSort();
+</script>
