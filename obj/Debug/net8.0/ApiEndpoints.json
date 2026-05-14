@@ -16,6 +16,22 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "diplom.Controllers.BotController",
+    "Method": "AskGuest",
+    "RelativePath": "api/Bot/guest/ask",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "diplom.Controllers.BotRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "diplom.Controllers.FileUploadController",
     "Method": "DeleteFile",
     "RelativePath": "api/FileUpload/delete/{materialId}",
@@ -48,8 +64,53 @@
         "Name": "materialId",
         "Type": "System.Int32",
         "IsRequired": false
+      },
+      {
+        "Name": "isIndexed",
+        "Type": "System.Boolean",
+        "IsRequired": false
       }
     ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "diplom.Controllers.FillEmbeddingsController",
+    "Method": "FillAllEmbeddings",
+    "RelativePath": "api/FillEmbeddings/all",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "diplom.Controllers.FillEmbeddingsController",
+    "Method": "FillChunksEmbeddings",
+    "RelativePath": "api/FillEmbeddings/chunks",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "diplom.Controllers.FillEmbeddingsController",
+    "Method": "FillInstructionsEmbeddings",
+    "RelativePath": "api/FillEmbeddings/instructions",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "diplom.Controllers.FillEmbeddingsController",
+    "Method": "GetStatus",
+    "RelativePath": "api/FillEmbeddings/status",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
     "ReturnTypes": []
   }
 ]

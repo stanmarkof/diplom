@@ -26,6 +26,8 @@ namespace diplom.Data
         public DbSet<RagQueryLog> RagQueryLogs { get; set; }
         public DbSet<ChatHistory> ChatHistories { get; set; }
 
+        public DbSet<BotInstruction> BotInstructions { get; set; }
+
         public DbSet<Section> Sections { get; set; }
 
         public DbSet<DisciplineLecturer> DisciplineLecturers { get; set; }

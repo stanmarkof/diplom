@@ -236,53 +236,71 @@
         </div>
     </footer>
 
-    <!-- Виджеты -->
-    @if (User.Identity.IsAuthenticated)
-    {
-        <!-- Виджет AI Бота -->
-        <div class="bot-widget">
-            <button id="botToggleBtn" class="bot-toggle-btn" title="Задать вопрос AI помощнику">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm0 13c-2.33 0-4.31-1.46-5.11-3.5h10.22c-.8 2.04-2.78 3.5-5.11 3.5z" fill="currentColor" />
-                </svg>
-            </button>
+    @{
+        var botApiUrl = User.Identity?.IsAuthenticated == true ? "/api/bot/ask" : "/api/bot/guest/ask";
+        var botWelcomeText = User.Identity?.IsAuthenticated == true
+            ? "Привет! Я Бот-помощник."
+            : "Здравствуйте! Я подскажу, как зарегистрироваться, войти в систему и куда перейти.";
+    }
 
-            <div id="botWindow" class="bot-window">
-                <div class="bot-container">
-                    <div class="bot-header">
-                        <div class="bot-header-info">
-                            <div class="bot-avatar">🤖</div>
-                            <div>
-                                <h5>AI Помощник</h5>
-                                <small>Онлайн</small>
-                            </div>
-                        </div>
-                        <button id="botCloseBtn" class="bot-close-btn">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M18 6L6 18M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-                    <div id="botMessages" class="bot-messages">
-                        <div class="bot-message bot">
-                            <div class="message-bubble">
-                                Привет! Я AI-помощник. Задавайте вопросы по учебным материалам, я постараюсь помочь!
-                            </div>
-                            <div class="message-time">Сейчас</div>
+    <!-- Виджет AI Бота (доступен всем; для гостя — только общая справка) -->
+    <div class="bot-widget" data-bot-api="@botApiUrl">
+        <button id="botToggleBtn" class="bot-toggle-btn" title="Задать вопрос AI помощнику">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm0 13c-2.33 0-4.31-1.46-5.11-3.5h10.22c-.8 2.04-2.78 3.5-5.11 3.5z" fill="currentColor" />
+            </svg>
+        </button>
+
+        <div id="botWindow" class="bot-window">
+            <div class="bot-container">
+                <div class="bot-header">
+                    <div class="bot-header-info">
+                        <div class="bot-avatar">🤖</div>
+                        <div>
+                            <h5>AI Помощник</h5>
+                            <small>@(User.Identity?.IsAuthenticated == true ? "С учётом вашей роли" : "Справка для гостя")</small>
                         </div>
                     </div>
-                    <div class="bot-input-container">
-                        <input type="text" id="botInput" class="bot-input" placeholder="Напишите вопрос..." />
-                        <button id="botSendBtn" class="bot-send-btn">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
-                            </svg>
-                        </button>
+                    
+                        <div class="bot-mode-switch">
+                            <label class="switch-label">
+                                <span class="mode-text mode-ai">Нейросеть</span>
+                                <div class="switch-track" id="aiModeSwitch">
+                                    <div class="switch-thumb"></div>
+                                </div>
+                                <span class="mode-text mode-emb">База знаний</span>
+                            </label>
+                        </div>
+                    
+                    <button id="botCloseBtn" class="bot-close-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div id="botMessages" class="bot-messages">
+                    <div class="bot-message bot">
+                        <div class="message-bubble">
+                            @botWelcomeText
+                        </div>
+                        <div class="message-time">Сейчас</div>
                     </div>
+                </div>
+                <div class="bot-input-container">
+                    <input type="text" id="botInput" class="bot-input" placeholder="Напишите вопрос..." />
+                    <button id="botSendBtn" class="bot-send-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                        </svg>
+                    </button>
                 </div>
             </div>
         </div>
+    </div>
 
+    <!-- Виджеты только для авторизованных -->
+    @if (User.Identity.IsAuthenticated)
+    {
         <!-- Виджет чата (мессенджер) -->
         <div class="chat-widget">
             <button id="chatToggleBtn" class="chat-toggle-btn" title="Открыть чат">
@@ -346,14 +364,60 @@
 
         updateContentMargin();
 
-        // Бот-виджет
+        // Бот-виджет с переключателем режимов
         const botToggleBtn = document.getElementById('botToggleBtn');
         const botCloseBtn = document.getElementById('botCloseBtn');
         const botWindow = document.getElementById('botWindow');
         const botMessages = document.getElementById('botMessages');
         const botInput = document.getElementById('botInput');
         const botSendBtn = document.getElementById('botSendBtn');
+        const aiModeSwitch = document.getElementById('aiModeSwitch');
         let isBotTyping = false;
+        let useAI = true; // По умолчанию используем нейросеть
+        const botWidgetEl = document.querySelector('.bot-widget[data-bot-api]');
+        const botAskUrl = botWidgetEl ? botWidgetEl.getAttribute('data-bot-api') : '/api/bot/guest/ask';
+
+        // Загружаем сохранённый режим
+        const savedMode = localStorage.getItem('botUseAI');
+        if (savedMode !== null) {
+            useAI = savedMode === 'true';
+            if (aiModeSwitch) {
+                if (!useAI) {
+                    aiModeSwitch.classList.add('emb-mode');
+                } else {
+                    aiModeSwitch.classList.remove('emb-mode');
+                }
+            }
+        }
+
+        // Обработчик переключателя режимов
+        if (aiModeSwitch) {
+            aiModeSwitch.addEventListener('click', () => {
+                useAI = !useAI;
+                if (useAI) {
+                    aiModeSwitch.classList.remove('emb-mode');
+                    addSystemMessage('🧠 Режим нейросети включен. Ответы будут генерироваться с помощью AI.');
+                } else {
+                    aiModeSwitch.classList.add('emb-mode');
+                    addSystemMessage('📚 Режим базы знаний включен. Будут использоваться только точные совпадения из базы знаний.');
+                }
+                localStorage.setItem('botUseAI', useAI);
+            });
+        }
+
+        function addSystemMessage(message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'bot-message system';
+            const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+            messageDiv.innerHTML = `
+                <div class="message-bubble system-bubble">
+                    <i class="fas fa-info-circle"></i> ${escapeHtml(message)}
+                </div>
+                <div class="message-time">${time}</div>
+            `;
+            botMessages.appendChild(messageDiv);
+            botMessages.scrollTop = botMessages.scrollHeight;
+        }
 
         if (botToggleBtn) {
             botToggleBtn.addEventListener('click', () => botWindow.classList.add('active'));
@@ -365,9 +429,9 @@
             messageDiv.className = `bot-message ${isUser ? 'user' : 'bot'}`;
             const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
             messageDiv.innerHTML = `
-                    <div class="message-bubble">${escapeHtml(message).replace(/\n/g, '<br>')}</div>
-                    <div class="message-time">${time}</div>
-                `;
+                <div class="message-bubble">${escapeHtml(message).replace(/\n/g, '<br>')}</div>
+                <div class="message-time">${time}</div>
+            `;
             botMessages.appendChild(messageDiv);
             botMessages.scrollTop = botMessages.scrollHeight;
         }
@@ -385,14 +449,31 @@
             addBotMessage(message, true);
             isBotTyping = true;
 
-
+            // Показываем индикатор печати
+            const typingIndicator = document.createElement('div');
+            typingIndicator.className = 'bot-message bot typing';
+            typingIndicator.innerHTML = `
+                <div class="message-bubble">
+                    <span class="typing-dots">...</span>
+                </div>
+            `;
+            botMessages.appendChild(typingIndicator);
+            botMessages.scrollTop = botMessages.scrollHeight;
 
             try {
-                const response = await fetch('/api/bot/ask', {
+                const response = await fetch(botAskUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query: message })
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        query: message,
+                        useAI: useAI // Отправляем режим на сервер
+                    })
                 });
+
+                // Удаляем индикатор печати
+                typingIndicator.remove();
+
                 if (response.ok) {
                     const data = await response.json();
                     addBotMessage(data.answer, false);
@@ -401,6 +482,7 @@
                 }
             } catch (error) {
                 console.error('Bot error:', error);
+                typingIndicator.remove();
                 addBotMessage('Не удалось подключиться к боту.', false);
             } finally {
                 isBotTyping = false;

@@ -10,7 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
-// Добавьте это после builder.Services.AddControllersWithViews();
+//  это после builder.Services.AddControllersWithViews();
 builder.Services.Configure<FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = 104857600; // 100 MB
@@ -47,8 +47,16 @@ builder.Services.ConfigureApplicationCookie(options =>
 // Добавьте в Program.cs после builder.Services.AddControllersWithViews()
 
 // Регистрация RAG сервиса (используйте реальный RagService, а не заглушку)
+builder.Services.AddHttpClient("ollama", (sp, client) =>
+{
+    var cfg = sp.GetRequiredService<IConfiguration>();
+    var baseUrl = cfg["Ollama:BaseUrl"]?.TrimEnd('/') ?? "http://localhost:11434";
+    client.BaseAddress = new Uri(baseUrl + "/");
+    client.Timeout = TimeSpan.FromSeconds(int.TryParse(cfg["Ollama:TimeoutSeconds"], out var t) ? t : 120);
+});
 builder.Services.AddScoped<IRagService, RagService>();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IEmbeddingService, SimpleEmbeddingService>();
 
 
 var app = builder.Build();
@@ -81,6 +89,7 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapControllers();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");

@@ -3,12 +3,17 @@ using diplom.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using Microsoft.Extensions.Configuration;
+using System.Diagnostics;
+using System.Security.Claims;
 
 namespace diplom.Services
 {
     public interface IRagService
     {
-        Task<string> AskBotAsync(string query, int userId);
+        Task<string> AskBotAsync(string query, int userId, bool useAI = true);
+        Task<string> AskGuestBotAsync(string query);
         Task IndexMaterialAsync(Material material, bool forceReindex = false);
         Task DeleteMaterialIndexAsync(int materialId);
         Task RebuildAllIndexesAsync();
@@ -20,470 +25,935 @@ namespace diplom.Services
         private readonly ILogger<RagService> _logger;
         private readonly IWebHostEnvironment _env;
         private readonly HttpClient _httpClient;
-        private readonly string _ollamaUrl = "http://localhost:11434";
-        private readonly string _ollamaModel = "llama3.2:3b";
+        private readonly IConfiguration _configuration;
+        private readonly string _ollamaModel;
+        private readonly IEmbeddingService _embeddingService;
 
-        public RagService(IServiceScopeFactory scopeFactory, ILogger<RagService> logger, IWebHostEnvironment env)
+        private static readonly Dictionary<string, string[]> SearchKeywordBoosts = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["дисциплин"] = new[] { "дисциплина", "курс", "семестр" },
+            ["тест"] = new[] { "тесты", "экзамен", "вопрос" },
+            ["материал"] = new[] { "файл", "лекци", "конспект", "загруз" },
+            ["регистра"] = new[] { "код", "аккаунт", "подтвержден" },
+            ["вход"] = new[] { "login", "авторизац", "логин" },
+            ["препод"] = new[] { "лектор", "ведёт", "преподавател" },
+            ["студент"] = new[] { "групп", "зачётк", "студенческ" },
+            ["админ"] = new[] { "управлен", "администратор" },
+            ["навига"] = new[] { "страниц", "раздел", "меню", "ссылк" },
+        };
+
+        public RagService(
+            IServiceScopeFactory scopeFactory,
+            ILogger<RagService> logger,
+            IWebHostEnvironment env,
+            IHttpClientFactory httpClientFactory,
+            IConfiguration configuration,
+            IEmbeddingService embeddingService)
         {
             _scopeFactory = scopeFactory;
             _logger = logger;
             _env = env;
-            _httpClient = new HttpClient();
-            _httpClient.BaseAddress = new Uri(_ollamaUrl);
-            _httpClient.Timeout = TimeSpan.FromSeconds(120);
+            _httpClient = httpClientFactory.CreateClient("ollama");
+            _configuration = configuration;
+            _ollamaModel = configuration["Ollama:Model"] ?? "llama3.2:3b";
+            _embeddingService = embeddingService;
         }
 
-        public async Task<string> AskBotAsync(string query, int userId)
+        public async Task<string> AskBotAsync(string query, int userId, bool useAI = true)
         {
+            var totalStopwatch = Stopwatch.StartNew();
+
             try
             {
                 using var scope = _scopeFactory.CreateScope();
                 var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-                Console.WriteLine($"=== ASK BOT ===");
-                Console.WriteLine($"UserId: {userId}");
-                Console.WriteLine($"Query: {query}");
+                Console.WriteLine($"");
+                Console.WriteLine($"╔══════════════════════════════════════════════════════════════════╗");
+                Console.WriteLine($"║  🤖 ASK BOT - {(useAI ? "РЕЖИМ НЕЙРОСЕТИ" : "РЕЖИМ ЭМБЕДДИНГОВ")}                               ║");
+                Console.WriteLine($"╚══════════════════════════════════════════════════════════════════╝");
+                Console.WriteLine($"📝 Вопрос: \"{query}\"");
+                Console.WriteLine($"👤 UserId: {userId}");
+                Console.WriteLine($"🎮 Режим: {(useAI ? "Ollama (нейросеть)" : "Только эмбеддинги")}");
+                Console.WriteLine($"");
 
-                // Получаем информацию о пользователе и его роли
+                // Получаем роль пользователя
                 var user = await context.Users.FindAsync(userId);
+
                 var isAdmin = await context.UserRoles
                     .Join(context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur, r })
                     .AnyAsync(x => x.ur.UserId == userId && x.r.Name == "Admin");
+
                 var isLecturer = await context.UserRoles
                     .Join(context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur, r })
                     .AnyAsync(x => x.ur.UserId == userId && x.r.Name == "Lecturer");
-                var isStudent = !isAdmin && !isLecturer;
 
-                // ==================== СБОР ДАННЫХ В ЗАВИСИМОСТИ ОТ РОЛИ ====================
+                var isStudent = !isAdmin && !isLecturer && await context.Students.AsNoTracking().AnyAsync(s => s.Id == userId);
 
-                var dbData = new StringBuilder();
-                dbData.AppendLine("=== ДАННЫЕ ИЗ СИСТЕМЫ ===\n");
+                var userRole = isAdmin ? "Admin" : isLecturer ? "Lecturer" : "Student";
+                Console.WriteLine($"✅ Роль пользователя: {userRole}");
 
-                // 1. Информация о пользователе
-                dbData.AppendLine($"Пользователь: {user?.UserName}, ID: {userId}");
-                dbData.AppendLine($"Роль: {(isAdmin ? "Администратор" : isLecturer ? "Преподаватель" : "Студент")}");
+                // ==================== 1. БЫСТРЫЕ ОТВЕТЫ ====================
 
-                // 3. ДАННЫЕ ДЛЯ АДМИНИСТРАТОРА - полный доступ
-                if (isAdmin)
+                var queryLower = query.ToLower().Trim();
+
+                if (queryLower == "привет" || queryLower == "здравствуй" || queryLower == "hello")
                 {
-                    // Все группы
-                    var allGroups = await context.StudentGroups
-                        .Include(g => g.Course)
-                        .ToListAsync();
-                    dbData.AppendLine($"\n=== ВСЕ ГРУППЫ ({allGroups.Count} шт.) ===");
-                    foreach (var group in allGroups.Take(20))
-                    {
-                        var studentCount = await context.Students.CountAsync(s => s.StudentGroupId == group.Id);
-                        dbData.AppendLine($"- {group.Name} | Курс: {group.Course?.Name} | Студентов: {studentCount}");
-                    }
-
-                    // Все курсы
-                    var allCourses = await context.Courses.ToListAsync();
-                    dbData.AppendLine($"\n=== ВСЕ КУРСЫ ({allCourses.Count} шт.) ===");
-                    foreach (var course in allCourses.Take(20))
-                    {
-                        var groupsCount = await context.StudentGroups.CountAsync(g => g.CourseId == course.Id);
-                        var disciplinesCount = await context.Disciplines.CountAsync(d => d.CourseId == course.Id);
-                        dbData.AppendLine($"- {course.Code} | {course.Name} | Групп: {groupsCount} | Дисциплин: {disciplinesCount}");
-                    }
-
-                    // Все дисциплины (ИСПРАВЛЕНО)
-                    var allDisciplines = await context.Disciplines
-                        .Include(d => d.Course)
-                        .Include(d => d.DisciplineLecturers)
-                            .ThenInclude(dl => dl.Lecturer)
-                        .ToListAsync();
-                    dbData.AppendLine($"\n=== ВСЕ ДИСЦИПЛИНЫ ({allDisciplines.Count} шт.) ===");
-                    foreach (var d in allDisciplines.Take(30))
-                    {
-                        var materialsCount = await context.Materials.CountAsync(m => m.DisciplineId == d.Id);
-                        var testsCount = await context.Tests.CountAsync(t => t.DisciplineId == d.Id);
-                        var lecturers = string.Join(", ", d.DisciplineLecturers.Select(dl => dl.Lecturer?.FullName ?? "неизвестно"));
-                        dbData.AppendLine($"- {d.Name} ({d.Course?.Code}) | {d.CourseNumber} курс, {d.Semester} семестр");
-                        dbData.AppendLine($"  Преподаватель: {lecturers}");
-                        dbData.AppendLine($"  Материалов: {materialsCount}, Тестов: {testsCount}");
-                    }
-
-                    // Все преподаватели
-                    var allLecturers = await context.Lecturers.ToListAsync();
-                    dbData.AppendLine($"\n=== ВСЕ ПРЕПОДАВАТЕЛИ ({allLecturers.Count} шт.) ===");
-                    foreach (var l in allLecturers)
-                    {
-                        var disciplinesCount = await context.DisciplineLecturers.CountAsync(dl => dl.LecturerId == l.Id);
-                        dbData.AppendLine($"- {l.FullName} | Кафедра: {l.Department ?? "не указана"} | Дисциплин: {disciplinesCount}");
-                    }
-
-                    // Все студенты
-                    var allStudents = await context.Students.ToListAsync();
-                    dbData.AppendLine($"\n=== ВСЕ СТУДЕНТЫ ({allStudents.Count} шт.) ===");
-                    foreach (var s in allStudents.Take(30))
-                    {
-                        var group = await context.StudentGroups.FindAsync(s.StudentGroupId);
-                        var testsCompleted = await context.TestResults.CountAsync(tr => tr.StudentId == s.Id);
-                        dbData.AppendLine($"- {s.FullName} | Группа: {group?.Name ?? "не назначена"} | Тестов пройдено: {testsCompleted}");
-                    }
+                    return GetGreetingMessage(userRole, user?.UserName);
                 }
 
-                // 3. ДАННЫЕ ДЛЯ ПРЕПОДАВАТЕЛЯ - только его дисциплины и связанные группы
-                else if (isLecturer)
+                if (queryLower == "помощь" || queryLower == "help" || queryLower == "команды")
                 {
-                    var lecturer = await context.Lecturers.FirstOrDefaultAsync(l => l.Id == userId);
-                    dbData.AppendLine($"\n=== ИНФОРМАЦИЯ О ПРЕПОДАВАТЕЛЕ ===");
-                    dbData.AppendLine($"ФИО: {lecturer?.FullName}");
-                    dbData.AppendLine($"Кафедра: {lecturer?.Department ?? "не указана"}");
-                    dbData.AppendLine($"Должность: {lecturer?.Position ?? "не указана"}");
-
-                    // Дисциплины преподавателя
-                    var myDisciplines = await context.Disciplines
-                        .Include(d => d.Course)
-                        .Include(d => d.OpenGroups)
-                        .Where(d => d.DisciplineLecturers.Any(dl => dl.LecturerId == userId))
-                        .ToListAsync();
-
-                    dbData.AppendLine($"\n=== ВАШИ ДИСЦИПЛИНЫ ({myDisciplines.Count} шт.) ===");
-                    foreach (var d in myDisciplines)
-                    {
-                        var materialsCount = await context.Materials.CountAsync(m => m.DisciplineId == d.Id);
-                        var testsCount = await context.Tests.CountAsync(t => t.DisciplineId == d.Id);
-                        dbData.AppendLine($"- {d.Name} ({d.Course?.Code}) | {d.CourseNumber} курс, {d.Semester} семестр");
-                        dbData.AppendLine($"  Материалов: {materialsCount}, Тестов: {testsCount}");
-
-                        if (d.OpenGroups.Any())
-                        {
-                            var groupsInfo = new List<string>();
-                            foreach (var group in d.OpenGroups)
-                            {
-                                var studentCount = await context.Students.CountAsync(s => s.StudentGroupId == group.Id);
-                                groupsInfo.Add($"{group.Name} ({studentCount} студ.)");
-                            }
-                            dbData.AppendLine($"  Доступно для групп: {string.Join(", ", groupsInfo)}");
-                        }
-                        else
-                        {
-                            dbData.AppendLine($"  Доступно для групп: нет");
-                        }
-                    }
-
-                    // Студенты в группах преподавателя
-                    var allGroups = myDisciplines.SelectMany(d => d.OpenGroups).Distinct().ToList();
-                    if (allGroups.Any())
-                    {
-                        dbData.AppendLine($"\n=== СТУДЕНТЫ В ВАШИХ ГРУППАХ ===");
-                        foreach (var group in allGroups)
-                        {
-                            var students = await context.Students
-                                .Where(s => s.StudentGroupId == group.Id)
-                                .Select(s => s.FullName)
-                                .ToListAsync();
-
-                            dbData.AppendLine($"\nГруппа {group.Name} (всего {students.Count} студентов):");
-                            foreach (var student in students.Take(15))
-                            {
-                                dbData.AppendLine($"  - {student}");
-                            }
-                            if (students.Count > 15)
-                            {
-                                dbData.AppendLine($"  ... и ещё {students.Count - 15} студентов");
-                            }
-                        }
-                    }
-
-                    // Результаты тестов студентов
-                    var myDisciplineIds = myDisciplines.Select(d => d.Id).ToList();
-                    var studentResults = await context.TestResults
-                        .Include(tr => tr.Test)
-                        .Include(tr => tr.Student)
-                        .Where(tr => myDisciplineIds.Contains(tr.Test.DisciplineId))
-                        .Take(50)
-                        .ToListAsync();
-
-                    if (studentResults.Any())
-                    {
-                        dbData.AppendLine($"\n=== РЕЗУЛЬТАТЫ СТУДЕНТОВ ПО ВАШИМ ДИСЦИПЛИНАМ ===");
-                        foreach (var result in studentResults.GroupBy(r => r.Student).Take(20))
-                        {
-                            var avgScore = result.Average(r => (double)r.Score / r.MaxScore * 100);
-                            dbData.AppendLine($"- {result.Key?.FullName}: средний балл {avgScore:F0}%");
-                        }
-                    }
+                    return GetHelpMessage(userRole);
                 }
 
-                // 4. ДАННЫЕ ДЛЯ СТУДЕНТА - только его группа и доступные дисциплины
-                else if (isStudent)
+                // ==================== 1.5 ТОЧНЫЕ СОВПАДЕНИЯ ====================
+
+               
+                // ==================== 2. РЕЖИМ ТОЛЬКО ЭМБЕДДИНГИ ====================
+
+                if (!useAI)
                 {
-                    var student = await context.Students
-                        .Include(s => s.StudentGroup)
-                            .ThenInclude(g => g.Course)
-                        .FirstOrDefaultAsync(s => s.Id == userId);
+                    // РЕЖИМ ТОЛЬКО ЭМБЕДДИНГИ - точный поиск по базе знаний
+                    Console.WriteLine($"");
+                    Console.WriteLine($"🔍 РЕЖИМ ЭМБЕДДИНГОВ: Поиск точных совпадений...");
 
-                    if (student != null)
+                    var semanticResult = await SemanticSearchAllAsync(query, userRole);
+
+                    if (semanticResult.HasValue && semanticResult.Value.Score > 0.55f)
                     {
-                        dbData.AppendLine($"\n=== ИНФОРМАЦИЯ О СТУДЕНТЕ ===");
-                        dbData.AppendLine($"ФИО: {student.FullName}");
-                        dbData.AppendLine($"Студенческий ID: {student.StudentId ?? "не указан"}");
+                        totalStopwatch.Stop();
+                        Console.WriteLine($"✅ НАЙДЕНО ПО СМЫСЛУ!");
+                        Console.WriteLine($"   Релевантность: {semanticResult.Value.Score:P0}");
+                        Console.WriteLine($"   Источник: {semanticResult.Value.Source}");
+                        Console.WriteLine($"   Время: {totalStopwatch.ElapsedMilliseconds} мс");
 
-                        if (student.StudentGroup != null)
-                        {
-                            dbData.AppendLine($"Группа: {student.StudentGroup.Name}");
-                            dbData.AppendLine($"Направление: {student.StudentGroup.Course?.Code} - {student.StudentGroup.Course?.Name}");
-                            dbData.AppendLine($"Год поступления: {student.StudentGroup.YearOfAdmission}");
-
-                            // Дисциплины, доступные группе
-                            var accessibleDisciplines = await context.Disciplines
-                                .Include(d => d.Course)
-                                .Where(d => d.OpenGroups.Any(g => g.Id == student.StudentGroupId))
-                                .ToListAsync();
-
-                            dbData.AppendLine($"\n=== ДОСТУПНЫЕ ДИСЦИПЛИНЫ ({accessibleDisciplines.Count} шт.) ===");
-                            foreach (var d in accessibleDisciplines)
-                            {
-                                dbData.AppendLine($"- {d.Name} ({d.Course?.Code}) | {d.CourseNumber} курс, {d.Semester} семестр");
-                            }
-
-                            // Тесты для его дисциплин
-                            var accessibleDisciplineIds = accessibleDisciplines.Select(d => d.Id).ToList();
-                            var availableTests = await context.Tests
-                                .Include(t => t.Discipline)
-                                .Where(t => accessibleDisciplineIds.Contains(t.DisciplineId) && t.IsPublished)
-                                .ToListAsync();
-
-                            if (availableTests.Any())
-                            {
-                                dbData.AppendLine($"\n=== ДОСТУПНЫЕ ТЕСТЫ ({availableTests.Count} шт.) ===");
-                                foreach (var t in availableTests)
-                                {
-                                    var deadline = t.Deadline.HasValue ? $"до {t.Deadline.Value:dd.MM.yyyy}" : "без дедлайна";
-                                    dbData.AppendLine($"- {t.Title} ({t.Discipline?.Name}) | {deadline}");
-                                }
-                            }
-
-                            // Результаты тестов студента
-                            var testResults = await context.TestResults
-                                .Include(r => r.Test)
-                                    .ThenInclude(t => t.Discipline)
-                                .Where(r => r.StudentId == userId)
-                                .OrderByDescending(r => r.CompletedAt)
-                                .ToListAsync();
-
-                            if (testResults.Any())
-                            {
-                                dbData.AppendLine($"\n=== ВАШИ РЕЗУЛЬТАТЫ ТЕСТОВ ({testResults.Count} шт.) ===");
-                                foreach (var r in testResults)
-                                {
-                                    var percentage = (double)r.Score / r.MaxScore * 100;
-                                    var grade = percentage >= 85 ? "отлично" : percentage >= 70 ? "хорошо" : percentage >= 50 ? "удовлетворительно" : "неудовлетворительно";
-                                    dbData.AppendLine($"- {r.Test.Title} ({r.Test.Discipline?.Name}): {r.Score}/{r.MaxScore} ({percentage:F0}%) - {grade}");
-                                }
-                            }
-
-                            // Дедлайны
-                            var deadlines = await context.Tests
-                                .Include(t => t.Discipline)
-                                .Where(t => accessibleDisciplineIds.Contains(t.DisciplineId) &&
-                                            t.Deadline.HasValue &&
-                                            t.Deadline.Value > DateTime.UtcNow)
-                                .OrderBy(t => t.Deadline)
-                                .ToListAsync();
-
-                            if (deadlines.Any())
-                            {
-                                dbData.AppendLine($"\n=== БЛИЖАЙШИЕ ДЕДЛАЙНЫ ===");
-                                foreach (var d in deadlines.Take(5))
-                                {
-                                    var daysLeft = (d.Deadline.Value - DateTime.UtcNow).Days;
-                                    dbData.AppendLine($"- {d.Title}: {d.Deadline.Value:dd.MM.yyyy} (осталось {daysLeft} дн.)");
-                                }
-                            }
-                        }
-                        else
-                        {
-                            dbData.AppendLine("Вы ещё не прикреплены к группе. Обратитесь к администратору.");
-                        }
+                        await SaveToHistory(context, userId, query, semanticResult.Value.Answer, $"{semanticResult.Value.Source} (эмбеддинги)");
+                        return semanticResult.Value.Answer;
                     }
+
+                    // Проверяем личные данные из БД
+                    var personalAnswer = await GetPersonalDataAnswerAsync(context, userId, query, isAdmin, isLecturer, isStudent);
+                    if (personalAnswer != null)
+                    {
+                        totalStopwatch.Stop();
+                        Console.WriteLine($"✅ Найдено в личных данных!");
+                        await SaveToHistory(context, userId, query, personalAnswer, "Личные данные (эмбеддинги)");
+                        return personalAnswer;
+                    }
+
+                    // Если ничего не найдено
+                    totalStopwatch.Stop();
+                    var notFoundMessage = "❌ **Информация не найдена**\n\n" +
+                                         "В базе знаний нет информации по вашему вопросу.\n\n" +
+                                         "💡 **Что делать?**\n" +
+                                         "• Попробуйте переформулировать вопрос\n" +
+                                         "• Включите режим нейросети для генерации ответа\n" +
+                                         "• Обратитесь к администратору за помощью";
+
+                    await SaveToHistory(context, userId, query, notFoundMessage, "Не найдено");
+                    return notFoundMessage;
                 }
 
-                dbData.AppendLine("\n=== КОНЕЦ ДАННЫХ ИЗ СИСТЕМЫ ===\n");
+                // ==================== 3. РЕЖИМ НЕЙРОСЕТИ (OLLAMA) ====================
 
-                // ==================== ПОИСК В УЧЕБНЫХ МАТЕРИАЛАХ (с учётом доступа) ====================
+                Console.WriteLine($"");
+                Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                Console.WriteLine($"🚀 РЕЖИМ НЕЙРОСЕТИ: Будет вызван Ollama");
+                Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
+                var ollamaStopwatch = Stopwatch.StartNew();
+
+                // Сбор данных из БД
+                Console.WriteLine($"📊 Сбор данных из БД для контекста...");
+                var dbData = await CollectDatabaseDataAsync(context, userId, isAdmin, isLecturer, isStudent);
+                Console.WriteLine($"✅ Данные из БД собраны. Размер: {dbData.Length} символов");
+
+                // Поиск в учебных материалах
+                Console.WriteLine($"📚 Поиск в учебных материалах (RAG)...");
                 var chunks = await GetAccessibleChunksForUserAsync(context, userId);
                 var knowledgeContext = new StringBuilder();
 
                 if (chunks.Any())
                 {
-                    var results = SearchRelevantChunks(query, chunks);
-                    knowledgeContext.AppendLine("=== ИНФОРМАЦИЯ ИЗ УЧЕБНЫХ МАТЕРИАЛОВ ===\n");
-                    foreach (var result in results.Take(5))
+                    var results = SemanticSearchChunks(query, chunks, take: 5);
+                    knowledgeContext.AppendLine("=== УЧЕБНЫЕ МАТЕРИАЛЫ ===\n");
+                    foreach (var result in results)
                     {
                         knowledgeContext.AppendLine(result.Text);
                         knowledgeContext.AppendLine();
                     }
-                    knowledgeContext.AppendLine("=== КОНЕЦ ИНФОРМАЦИИ ИЗ МАТЕРИАЛОВ ===\n");
+                    Console.WriteLine($"✅ Найдено релевантных чанков: {results.Count}");
+                }
+                else
+                {
+                    Console.WriteLine($"⚠️ Чанки не найдены. База знаний пуста.");
                 }
 
                 // История диалога
                 var historyContext = await GetRecentHistoryContextAsync(context, userId);
-
-                // ==================== ОТПРАВКА В NEURAL NETWORK ====================
-
-                var roleDescription = isAdmin ? "Администратор системы" : (isLecturer ? "Преподаватель" : "Студент");
-
-                var systemPrompt = $@"Ты - AI-помощник образовательной платформы. Пользователь является: {roleDescription}.
-
-ПРАВИЛА ДОСТУПА К ДАННЫМ:
-1. {roleDescription} имеет доступ ТОЛЬКО к данным, указанным ниже
-2. НЕ показывай данные, которые не относятся к роли пользователя
-3. Если пользователь спрашивает то, на что у него нет прав - вежливо объясни, что это доступно только администратору
-4. Отвечай на русском языке, будь полезным и дружелюбным
-
-ТЫ МОЖЕШЬ ОТВЕЧАТЬ НА ВОПРОСЫ О:
-- Личных данных пользователя
-- Доступных курсах и дисциплинах
-- Тестах и результатах
-- Дедлайнах
-- Учебных материалах
-- Расписании (если есть)
-
-НЕ РАЗГЛАШАЙ ДАННЫЕ ДРУГИХ ПОЛЬЗОВАТЕЛЕЙ, ЕСЛИ НЕТ НА ЭТО ПРАВ.";
-
-                var fullContext = new StringBuilder();
-                fullContext.AppendLine(historyContext);
-                fullContext.AppendLine(dbData.ToString());
-                fullContext.AppendLine(knowledgeContext.ToString());
-
-                var request = new
+                if (!string.IsNullOrEmpty(historyContext))
                 {
-                    model = _ollamaModel,
-                    messages = new[]
-                    {
-                new { role = "system", content = systemPrompt },
-                new { role = "user", content = $"ВОПРОС: {query}\n\nДОСТУПНЫЕ ДЛЯ ВАС ДАННЫЕ:\n{fullContext}\n\nОтветьте на вопрос, используя только доступные вам данные:" }
-            },
-                    stream = false,
-                    options = new
-                    {
-                        temperature = 0.3,
-                        num_predict = 1500,
-                        top_p = 0.9
-                    }
-                };
-
-                var json = JsonSerializer.Serialize(request);
-                var httpContent = new StringContent(json, Encoding.UTF8, "application/json");
-
-                var response = await _httpClient.PostAsync("/api/chat", httpContent);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var jsonResponse = await response.Content.ReadAsStringAsync();
-                    using var doc = JsonDocument.Parse(jsonResponse);
-                    var answer = doc.RootElement.GetProperty("message").GetProperty("content").GetString();
-
-                    await SaveToHistory(context, userId, query, answer, "Данные с учётом роли пользователя");
-                    return answer ?? "Не удалось получить ответ.";
+                    Console.WriteLine($"📜 История диалога загружена. Размер: {historyContext.Length} символов");
                 }
 
-                return "Извините, возникла ошибка. Попробуйте позже.";
+                // Формируем контекст
+                var fullContext = new StringBuilder();
+                fullContext.AppendLine(historyContext);
+                fullContext.AppendLine(dbData);
+                fullContext.AppendLine(knowledgeContext.ToString());
+
+                var contextStr = fullContext.ToString();
+                if (contextStr.Length > 4000)
+                {
+                    Console.WriteLine($"⚠️ Контекст слишком большой ({contextStr.Length} символов), сокращаем до 4000");
+                    contextStr = contextStr.Substring(0, 4000) + "...(контекст сокращён)";
+                }
+                Console.WriteLine($"📦 Итоговый контекст: {contextStr.Length} символов");
+
+                // Отправляем в Ollama
+                var systemPrompt = $"Ты — AI-помощник системы обучения. Пользователь: {(isAdmin ? "Админ" : isLecturer ? "Преподаватель" : "Студент")}. Отвечай на основе контекста. Будь краток.";
+                var userPayload = $"ВОПРОС: {query}\n\nКОНТЕКСТ:\n{contextStr}";
+
+                Console.WriteLine($"");
+                Console.WriteLine($"🤖 ОТПРАВКА ЗАПРОСА В OLLAMA...");
+                Console.WriteLine($"📋 Модель: {_ollamaModel}");
+                Console.WriteLine($"⏰ Время отправки: {DateTime.Now:HH:mm:ss.fff}");
+                Console.WriteLine($"");
+
+                var answer = await CallOllamaChatAsync(systemPrompt, userPayload, temperature: 0.3, maxTokens: 800);
+
+                ollamaStopwatch.Stop();
+                Console.WriteLine($"");
+                Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                Console.WriteLine($"✅ OLLAMA ОТВЕТИЛ за {ollamaStopwatch.ElapsedMilliseconds} мс");
+                Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                Console.WriteLine($"");
+
+                if (answer != null)
+                {
+                    Console.WriteLine($"📝 Ответ получен, длина: {answer.Length} символов");
+                    await SaveToHistory(context, userId, query, answer, "RAG+Ollama");
+                    Console.WriteLine($"⏱️ ОБЩЕЕ ВРЕМЯ: {totalStopwatch.ElapsedMilliseconds} мс");
+                    return answer;
+                }
+
+                return "Извините, нейросеть временно недоступна. Попробуйте позже или переключитесь в режим без нейросети.";
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ КРИТИЧЕСКАЯ ОШИБКА: {ex.Message}");
                 _logger.LogError(ex, "Error in AskBotAsync");
                 return "Произошла ошибка. Пожалуйста, попробуйте еще раз.";
             }
         }
 
-        // ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ДЛЯ БЫСТРЫХ ОТВЕТОВ ====================
-
-        private string GetSourceFromChunk(string chunkText)
+        private string NormalizeQuery(string query)
         {
-            // Ищем ИСТОЧНИК
-            var sourceMatch = System.Text.RegularExpressions.Regex.Match(chunkText, @"ИСТОЧНИК:\s*(.+?)(?:\n|$)");
-            if (sourceMatch.Success)
+            if (string.IsNullOrEmpty(query)) return query;
+
+            var normalized = query.ToLower().Trim();
+
+            // Удаляем лишние слова-паразиты
+            var stopWords = new[] { "мне", "меня", "мене", "тебе", "ему", "ей", "нам", "вам", "им" };
+            foreach (var word in stopWords)
             {
-                return $"📁 Информация находится в материале: **{sourceMatch.Groups[1].Value.Trim()}**";
+                normalized = normalized.Replace($" {word} ", " ");
+                if (normalized.StartsWith($"{word} ")) normalized = normalized.Substring(word.Length + 1);
+                if (normalized.EndsWith($" {word}")) normalized = normalized.Substring(0, normalized.Length - word.Length - 1);
             }
 
-            // Ищем Название материала
-            var materialMatch = System.Text.RegularExpressions.Regex.Match(chunkText, @"Название материала:\s*(.+?)(?:\n|$)");
-            if (materialMatch.Success)
+            // Заменяем синонимы
+            var synonyms = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
-                return $"📁 Информация находится в материале: **{materialMatch.Groups[1].Value.Trim()}**";
-            }
+                ["создать"] = "создать",
+                ["сделать"] = "создать",
+                ["добавить"] = "создать",
+                ["создай"] = "создать",
+                ["как мне"] = "как",
+                ["как можно"] = "как",
+                ["каким образом"] = "как",
+                ["расскажи как"] = "как",
+                ["объясни как"] = "как"
+            };
 
-            return "📁 Информация найдена в базе знаний, но источник не указан.";
-        }
-
-        private string GetShortSummaryFromChunk(string chunkText)
-        {
-            // Извлекаем содержимое
-            var contentMatch = System.Text.RegularExpressions.Regex.Match(chunkText, @"СОДЕРЖАНИЕ:\s*\n║\s*(.+?)(?:\n╚|$)", System.Text.RegularExpressions.RegexOptions.Singleline);
-            if (contentMatch.Success)
+            foreach (var syn in synonyms)
             {
-                var content = contentMatch.Groups[1].Value
-                    .Replace("\n║ ", " ")
-                    .Replace("\n", " ")
-                    .Replace("║", "")
-                    .Trim();
-
-                // Берем первые 200-300 символов
-                if (content.Length > 250)
+                if (normalized.Contains(syn.Key))
                 {
-                    return content.Substring(0, 250).Trim() + "...";
+                    normalized = normalized.Replace(syn.Key, syn.Value);
                 }
-                return content;
             }
 
-            return chunkText.Length > 300 ? chunkText.Substring(0, 300) + "..." : chunkText;
+            return normalized;
         }
+        // ==================== СЕМАНТИЧЕСКИЙ ПОИСК ====================
 
-        private string GetDefinitionFromChunk(string chunkText, string query)
+        // Вместо (string Answer, string Source, float Score)? используйте отдельный класс или кортеж с именами полей
+        private async Task<(string Answer, string Source, float Score)?> SemanticSearchAllAsync(string query, string userRole)
         {
-            var contentMatch = System.Text.RegularExpressions.Regex.Match(chunkText, @"СОДЕРЖАНИЕ:\s*\n║\s*(.+?)(?:\n╚|$)", System.Text.RegularExpressions.RegexOptions.Singleline);
-            if (contentMatch.Success)
+            var stopwatch = Stopwatch.StartNew();
+
+            // Нормализуем запрос для лучшего поиска
+            var normalizedQuery = NormalizeQuery(query);
+            Console.WriteLine($"  📝 Нормализованный запрос: '{normalizedQuery}'");
+
+            // 1. Получаем эмбеддинг вопроса (используем оригинальный и нормализованный)
+            var queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(query);
+            var normalizedQueryEmbedding = await _embeddingService.GenerateEmbeddingAsync(normalizedQuery);
+
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var results = new List<(float Score, string Answer, string Source, string Title, string Keywords)>();
+
+            // 2. Поиск по инструкциям
+            Console.WriteLine($"  📋 Поиск по инструкциям...");
+            var instructions = await context.BotInstructions
+                .Where(i => i.IsActive && (i.Role == "All" || i.Role == userRole))
+                .ToListAsync();
+
+            foreach (var instr in instructions)
             {
-                var content = contentMatch.Groups[1].Value
-                    .Replace("\n║ ", "\n")
-                    .Replace("║", "")
-                    .Trim();
-
-                var lines = content.Split('\n');
-                var firstLine = lines.FirstOrDefault() ?? content;
-
-                // Берем первое предложение или первую строку
-                var endIndex = firstLine.IndexOfAny(new[] { '.', '!', '?' });
-                if (endIndex > 0 && endIndex < 200)
+                // Проверяем точное совпадение в заголовке (быстрый путь)
+                var instrTitleNorm = NormalizeQuery(instr.Title);
+                if (instrTitleNorm.Contains(normalizedQuery) || normalizedQuery.Contains(instrTitleNorm))
                 {
-                    return firstLine.Substring(0, endIndex + 1);
+                    Console.WriteLine($"    ✅ Точное совпадение заголовка: {instr.Title}");
+                    results.Add((1.0f, instr.Answer, "Инструкция", instr.Title, instr.Title));
+                    continue;
                 }
 
-                if (firstLine.Length > 200)
+                float similarity = 0;
+
+                // Используем нормализованный эмбеддинг если есть
+                if (!string.IsNullOrEmpty(instr.Embedding) && instr.Embedding != "[]")
                 {
-                    return firstLine.Substring(0, 200) + "...";
+                    try
+                    {
+                        var instrEmbedding = JsonSerializer.Deserialize<float[]>(instr.Embedding);
+                        if (instrEmbedding != null)
+                        {
+                            // Берем максимум из двух эмбеддингов
+                            var sim1 = CosineSimilarity(queryEmbedding, instrEmbedding);
+                            var sim2 = CosineSimilarity(normalizedQueryEmbedding, instrEmbedding);
+                            similarity = Math.Max(sim1, sim2);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"  ⚠️ Ошибка десериализации эмбеддинга для {instr.Title}: {ex.Message}");
+                    }
                 }
 
-                return firstLine;
+                // Вычисляем текстовую релевантность для обоих вариантов
+                var textRelevance1 = CalculateTextRelevance(query, instr.Title + " " + instr.Answer);
+                var textRelevance2 = CalculateTextRelevance(normalizedQuery, instr.Title + " " + instr.Answer);
+                float textRelevance = Math.Max(textRelevance1, textRelevance2);
+
+                // Итоговая оценка
+                float finalScore = (similarity * 0.5f) + (textRelevance * 0.5f);
+
+                if (finalScore > 0.4f)
+                {
+                    results.Add((finalScore, instr.Answer, "Инструкция", instr.Title, instr.Title));
+                    Console.WriteLine($"    - {instr.Title}: эмбеддинг={similarity:F2}, текст={textRelevance:F2}, итого={finalScore:F2}");
+                }
             }
 
-            return chunkText.Length > 200 ? chunkText.Substring(0, 200) + "..." : chunkText;
+            // 3. Сортируем и выбираем лучший
+            var sortedResults = results.OrderByDescending(r => r.Score).ToList();
+
+            Console.WriteLine($"  🎯 Всего результатов: {results.Count}");
+            foreach (var r in sortedResults.Take(3))
+            {
+                Console.WriteLine($"    - {r.Source}: '{r.Title}' (оценка: {r.Score:P1})");
+            }
+
+            var best = sortedResults.FirstOrDefault();
+
+            stopwatch.Stop();
+
+            if (best.Score > 0.55f)
+            {
+                Console.WriteLine($"  ✅ Лучший результат: {best.Source} - {best.Title} (оценка: {best.Score:P1})");
+                return (best.Answer, best.Source, best.Score);
+            }
+
+            return null;
         }
 
-        private string GetContentFromChunk(string chunkText)
+        // Новый метод для вычисления текстовой релевантности
+        private float CalculateTextRelevance(string query, string text)
         {
-            var contentMatch = System.Text.RegularExpressions.Regex.Match(chunkText, @"СОДЕРЖАНИЕ:\s*\n║\s*(.+?)(?:\n╚|$)", System.Text.RegularExpressions.RegexOptions.Singleline);
-            if (contentMatch.Success)
+            if (string.IsNullOrEmpty(query) || string.IsNullOrEmpty(text))
+                return 0;
+
+            var queryLower = query.ToLower();
+            var textLower = text.ToLower();
+
+            // Разбиваем на слова
+            var queryWords = queryLower.Split(new[] { ' ', ',', '.', '!', '?', ';', ':' }, StringSplitOptions.RemoveEmptyEntries);
+            var textWords = textLower.Split(new[] { ' ', ',', '.', '!', '?', ';', ':', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+            if (queryWords.Length == 0)
+                return 0;
+
+            // Используем float для поддержки дробных значений
+            float totalScore = 0;
+
+            foreach (var qWord in queryWords)
             {
-                return contentMatch.Groups[1].Value
-                    .Replace("\n║ ", "\n")
-                    .Replace("║", "")
-                    .Trim();
+                if (qWord.Length < 3) continue; // Игнорируем короткие слова
+
+                // Точное совпадение
+                if (textLower.Contains(qWord))
+                {
+                    totalScore += 1.0f;
+                }
+                // Частичное совпадение для длинных слов
+                else if (qWord.Length > 5)
+                {
+                    bool found = false;
+                    foreach (var tWord in textWords)
+                    {
+                        if (tWord.Contains(qWord) || qWord.Contains(tWord))
+                        {
+                            totalScore += 0.5f;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found)
+                    {
+                        // Проверяем вхождение в текст целиком
+                        if (textLower.Contains(qWord.Substring(0, qWord.Length - 1)))
+                        {
+                            totalScore += 0.3f;
+                        }
+                    }
+                }
+                else if (qWord.Length >= 3 && qWord.Length <= 5)
+                {
+                    // Для коротких слов проверяем точное вхождение
+                    if (textLower.Contains(qWord))
+                    {
+                        totalScore += 0.8f;
+                    }
+                }
             }
 
-            return chunkText;
+            // Нормализуем (максимальное значение не должно превышать количество слов)
+            float relevance = totalScore / queryWords.Length;
+
+            // Дополнительный буст для фразовых совпадений
+            if (queryLower.Length > 10 && textLower.Contains(queryLower))
+            {
+                relevance += 0.2f;
+            }
+
+            // Ограничиваем максимальное значение 1.0
+            return Math.Min(relevance, 1.0f);
         }
 
-        // ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ДЛЯ ЖИВЫХ ДАННЫХ ====================
+        // Новый метод для расчета буста по ключевым словам
+        private float CalculateKeywordBoost(string query, string title, string answer)
+        {
+            var queryLower = query.ToLower();
+            var titleLower = title.ToLower();
+            var answerLower = answer.ToLower();
 
-        private async Task<string> GetUserDisciplinesAsync(AppDbContext context, int userId)
+            float boost = 0;
+
+            // Словарь синонимов и связанных терминов
+            var synonymMap = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["курс"] = new[] { "направление", "специальность", "course", "направлен" },
+                ["дисциплин"] = new[] { "предмет", "discipline", "subject" },
+                ["создать"] = new[] { "добавить", "создани", "создайте", "как создать" },
+                ["групп"] = new[] { "группа", "group", "команда" },
+                ["студент"] = new[] { "учащийся", "student" },
+                ["преподавател"] = new[] { "учитель", "lecturer", "teacher" },
+                ["тест"] = new[] { "экзамен", "test", "quiz", "проверк" },
+                ["материал"] = new[] { "файл", "material", "документ" }
+            };
+
+            // Проверяем наличие ключевых слов в заголовке
+            foreach (var kvp in synonymMap)
+            {
+                if (queryLower.Contains(kvp.Key))
+                {
+                    foreach (var synonym in kvp.Value)
+                    {
+                        if (titleLower.Contains(synonym) || answerLower.Contains(synonym))
+                        {
+                            boost += 0.3f;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Точное совпадение слов
+            var queryWords = queryLower.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var word in queryWords)
+            {
+                if (word.Length > 2)
+                {
+                    if (titleLower.Contains(word)) boost += 0.2f;
+                    if (answerLower.Contains(word)) boost += 0.1f;
+                }
+            }
+
+            return Math.Min(boost, 0.5f); // Максимальный буст 0.5
+        }
+
+        private float CalculateKeywordBoostForChunk(string query, string chunkText)
+        {
+            var queryLower = query.ToLower();
+            var chunkLower = chunkText.ToLower();
+
+            float boost = 0;
+
+            // Проверяем специальные паттерны
+            if (queryLower.Contains("как создать курс") && chunkLower.Contains("как создать дисциплину"))
+            {
+                // Это неправильный ответ - штрафуем
+                return -0.3f;
+            }
+
+            if (queryLower.Contains("курс") && !chunkLower.Contains("дисциплин"))
+            {
+                boost += 0.2f;
+            }
+
+            if (queryLower.Contains("создать курс") && chunkLower.Contains("курс"))
+            {
+                boost += 0.3f;
+            }
+
+            // Обычная проверка ключевых слов
+            var queryWords = queryLower.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var word in queryWords)
+            {
+                if (word.Length > 2 && chunkLower.Contains(word))
+                {
+                    boost += 0.1f;
+                }
+            }
+
+            return Math.Min(boost, 0.5f);
+        }
+
+       
+
+        // Добавьте метод для расчета схожести строк
+        private double CalculateLevenshteinSimilarity(string s1, string s2)
+        {
+            if (string.IsNullOrEmpty(s1) || string.IsNullOrEmpty(s2))
+                return 0;
+
+            int maxLen = Math.Max(s1.Length, s2.Length);
+            int distance = LevenshteinDistance(s1, s2);
+            return 1.0 - (double)distance / maxLen;
+        }
+
+        private int LevenshteinDistance(string s1, string s2)
+        {
+            int[,] dp = new int[s1.Length + 1, s2.Length + 1];
+
+            for (int i = 0; i <= s1.Length; i++)
+                dp[i, 0] = i;
+
+            for (int j = 0; j <= s2.Length; j++)
+                dp[0, j] = j;
+
+            for (int i = 1; i <= s1.Length; i++)
+            {
+                for (int j = 1; j <= s2.Length; j++)
+                {
+                    int cost = (s1[i - 1] == s2[j - 1]) ? 0 : 1;
+                    dp[i, j] = Math.Min(
+                        Math.Min(dp[i - 1, j] + 1, dp[i, j - 1] + 1),
+                        dp[i - 1, j - 1] + cost);
+                }
+            }
+
+            return dp[s1.Length, s2.Length];
+        }
+
+        private List<RagChunk> SemanticSearchChunks(string query, List<RagChunk> chunks, int take)
+        {
+            if (chunks.Count == 0) return new List<RagChunk>();
+
+            // Упрощённый поиск по ключевым словам (если нет эмбеддингов)
+            var queryLower = query.ToLower();
+            var results = new List<(RagChunk Chunk, int Score)>();
+
+            foreach (var chunk in chunks)
+            {
+                int score = 0;
+                var chunkLower = chunk.Text.ToLower();
+
+                // Простой поиск по ключевым словам
+                var words = queryLower.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                foreach (var word in words)
+                {
+                    if (word.Length > 2 && chunkLower.Contains(word))
+                    {
+                        score++;
+                    }
+                }
+
+                if (score > 0)
+                {
+                    results.Add((chunk, score));
+                }
+            }
+
+            if (!results.Any())
+                return chunks.Take(take).ToList();
+
+            return results
+                .OrderByDescending(r => r.Score)
+                .Take(take)
+                .Select(r => r.Chunk)
+                .ToList();
+        }
+
+        private float CosineSimilarity(float[] vec1, float[] vec2)
+        {
+            if (vec1 == null || vec2 == null || vec1.Length == 0 || vec2.Length == 0 || vec1.Length != vec2.Length)
+                return 0;
+
+            float dot = 0, norm1 = 0, norm2 = 0;
+            for (int i = 0; i < vec1.Length; i++)
+            {
+                dot += vec1[i] * vec2[i];
+                norm1 += vec1[i] * vec1[i];
+                norm2 += vec2[i] * vec2[i];
+            }
+
+            if (norm1 == 0 || norm2 == 0) return 0;
+
+            float result = dot / (float)(Math.Sqrt(norm1) * Math.Sqrt(norm2));
+
+            // Корректируем возможные ошибки округления
+            if (result > 1) result = 1;
+            if (result < -1) result = -1;
+            if (float.IsNaN(result)) result = 0;
+
+            return result;
+        }
+
+        // ==================== ЛИЧНЫЕ ДАННЫЕ ====================
+
+        private async Task<string?> GetPersonalDataAnswerAsync(AppDbContext context, int userId, string query, bool isAdmin, bool isLecturer, bool isStudent)
+        {
+            var queryLower = query.ToLower();
+
+            if (queryLower.Contains("дисциплин") || queryLower.Contains("предмет"))
+            {
+                Console.WriteLine($"  → Запрос к БД: дисциплины");
+                return await GetUserDisciplinesAsync(context, userId);
+            }
+
+            if (queryLower.Contains("дедлайн") || queryLower.Contains("срок") || queryLower.Contains("сдавать"))
+            {
+                Console.WriteLine($"  → Запрос к БД: дедлайны");
+                return await GetTestDeadlinesAsync(context, userId);
+            }
+
+            if (queryLower.Contains("результат") || queryLower.Contains("оценк") || queryLower.Contains("балл"))
+            {
+                Console.WriteLine($"  → Запрос к БД: результаты");
+                return await GetTestResultsAsync(context, userId);
+            }
+
+            if (queryLower.Contains("группа"))
+            {
+                Console.WriteLine($"  → Запрос к БД: группа");
+                return await GetUserGroupAsync(context, userId);
+            }
+
+            if (queryLower.Contains("тест") && (queryLower.Contains("доступн") || queryLower.Contains("какие")))
+            {
+                Console.WriteLine($"  → Запрос к БД: доступные тесты");
+                return await GetAvailableTestsAsync(context, userId);
+            }
+
+            if (isAdmin && (queryLower.Contains("статистик") || queryLower.Contains("сколько")))
+            {
+                Console.WriteLine($"  → Запрос к БД: статистика");
+                var groupsCount = await context.StudentGroups.CountAsync();
+                var coursesCount = await context.Courses.CountAsync();
+                var disciplinesCount = await context.Disciplines.CountAsync();
+                var usersCount = await context.Users.CountAsync();
+                var materialsCount = await context.Materials.CountAsync();
+                var testsCount = await context.Tests.CountAsync();
+
+                return $@"
+📊 **Статистика системы:**
+
+👥 Пользователей: {usersCount}
+👨‍🏫 Преподавателей: {await context.Lecturers.CountAsync()}
+👨‍🎓 Студентов: {await context.Students.CountAsync()}
+
+📚 Учебные данные:
+• Дисциплин: {disciplinesCount}
+• Курсов: {coursesCount}
+• Групп: {groupsCount}
+• Материалов: {materialsCount}
+• Тестов: {testsCount}
+";
+            }
+
+            return null;
+        }
+
+        // ==================== БЫСТРЫЕ ОТВЕТЫ ====================
+
+        private string GetGreetingMessage(string role, string? userName)
+        {
+            var roleText = role == "Admin" ? "Администратор" : role == "Lecturer" ? "Преподаватель" : "Студент";
+            return $@"
+🤖 **Привет, {userName ?? "пользователь"}!**
+
+Я AI-помощник. Ваша роль: **{roleText}**
+
+💡 **Что я могу:**
+• Отвечать на вопросы по вашим дисциплинам, тестам и материалам
+• Помогать с навигацией по платформе
+• Подсказывать, как создавать материалы и тесты
+
+📝 **Попробуйте спросить:**
+• ""как создать материал""
+• ""как создать тест""
+• ""мои дисциплины""
+• ""дедлайны""
+• ""помощь""
+";
+        }
+
+        private string GetHelpMessage(string role)
+        {
+            if (role == "Admin")
+            {
+                return @"
+📋 **Справка для администратора**
+
+**Управление:**
+• Все пользователи - /Admin/AllUsers
+• Создать преподавателя - /Admin/CreateLecturer
+• Создать администратора - /Admin/CreateAdmin
+• Группы - /Admin/ManageGroups
+• Курсы - /Admin/ManageCourses
+• Дисциплины - /Admin/ManageDisciplines
+
+**Настройки:**
+• Код регистрации - /Admin/ChangeVerificationCode
+• Обратная связь - /Admin/ViewFeedbacks
+
+**Быстрые команды:**
+• ""как создать группу""
+• ""как создать курс""
+• ""как создать дисциплину""
+";
+            }
+            else if (role == "Lecturer")
+            {
+                return @"
+📋 **Справка для преподавателя**
+
+**Мои дисциплины:** /Lecturer/Index
+
+**Возможности:**
+• Добавлять учебные материалы
+• Создавать тесты и вопросы
+• Управлять разделами дисциплин
+• Загружать файлы
+
+**Быстрые команды:**
+• ""как создать материал""
+• ""как создать тест""
+• ""как загрузить файл""
+• ""мои дисциплины""
+";
+            }
+            else
+            {
+                return @"
+📋 **Справка для студента**
+
+**Разделы:**
+• Мои дисциплины - в боковом меню
+• Мои тесты - в боковом меню
+
+**Что можно:**
+• Проходить доступные тесты
+• Скачивать учебные материалы
+• Смотреть результаты
+
+**Быстрые команды:**
+• ""мои дисциплины""
+• ""дедлайны""
+• ""мои результаты""
+";
+            }
+        }
+
+        // ==================== СБОР ДАННЫХ ИЗ БД ====================
+
+        private async Task<string> CollectDatabaseDataAsync(AppDbContext context, int userId, bool isAdmin, bool isLecturer, bool isStudent)
+        {
+            var dbData = new StringBuilder();
+            dbData.AppendLine("=== ДАННЫЕ ИЗ СИСТЕМЫ ===\n");
+
+            var user = await context.Users.FindAsync(userId);
+            dbData.AppendLine($"Пользователь: {user?.UserName}, ID: {userId}");
+            dbData.AppendLine($"Роль: {(isAdmin ? "Администратор" : isLecturer ? "Преподаватель" : isStudent ? "Студент" : "Пользователь")}");
+
+            if (isAdmin)
+            {
+                var groupsCount = await context.StudentGroups.CountAsync();
+                var coursesCount = await context.Courses.CountAsync();
+                var disciplinesCount = await context.Disciplines.CountAsync();
+                var usersCount = await context.Users.CountAsync();
+
+                dbData.AppendLine($"\n📊 Статистика системы:");
+                dbData.AppendLine($"• Групп: {groupsCount}");
+                dbData.AppendLine($"• Курсов: {coursesCount}");
+                dbData.AppendLine($"• Дисциплин: {disciplinesCount}");
+                dbData.AppendLine($"• Пользователей: {usersCount}");
+            }
+            else if (isLecturer)
+            {
+                var lecturer = await context.Lecturers.FirstOrDefaultAsync(l => l.Id == userId);
+                dbData.AppendLine($"\n👨‍🏫 Преподаватель: {lecturer?.FullName}");
+                dbData.AppendLine($"Кафедра: {lecturer?.Department ?? "не указана"}");
+
+                var myDisciplines = await context.Disciplines
+                    .Where(d => d.DisciplineLecturers.Any(dl => dl.LecturerId == userId))
+                    .ToListAsync();
+
+                dbData.AppendLine($"\n📚 Ваши дисциплины ({myDisciplines.Count}):");
+                foreach (var d in myDisciplines)
+                {
+                    var materialsCount = await context.Materials.CountAsync(m => m.DisciplineId == d.Id);
+                    var testsCount = await context.Tests.CountAsync(t => t.DisciplineId == d.Id);
+                    dbData.AppendLine($"  • {d.Name} (материалов: {materialsCount}, тестов: {testsCount})");
+                }
+            }
+            else if (isStudent)
+            {
+                var student = await context.Students
+                    .Include(s => s.StudentGroup)
+                    .FirstOrDefaultAsync(s => s.Id == userId);
+
+                if (student?.StudentGroup != null)
+                {
+                    dbData.AppendLine($"\n👨‍🎓 Студент: {student.FullName}");
+                    dbData.AppendLine($"Группа: {student.StudentGroup.Name}");
+
+                    var accessibleDisciplines = await context.Disciplines
+                        .Where(d => d.OpenGroups.Any(g => g.Id == student.StudentGroupId))
+                        .ToListAsync();
+
+                    dbData.AppendLine($"\n📚 Доступные дисциплины ({accessibleDisciplines.Count}):");
+                    foreach (var d in accessibleDisciplines)
+                    {
+                        dbData.AppendLine($"  • {d.Name}");
+                    }
+                }
+                else
+                {
+                    dbData.AppendLine("Вы пока не прикреплены к группе.");
+                }
+            }
+
+            dbData.AppendLine("\n=== КОНЕЦ ДАННЫХ ===\n");
+            return dbData.ToString();
+        }
+
+        public async Task<string> AskGuestBotAsync(string query)
+        {
+            try
+            {
+                Console.WriteLine($"=== GUEST BOT ===");
+                Console.WriteLine($"Query: {query}");
+
+                var semanticResult = await SemanticSearchAllAsync(query, "Guest");
+                if (semanticResult.HasValue && semanticResult.Value.Score > 0.55f)
+                {
+                    return semanticResult.Value.Answer;
+                }
+
+                return @"
+🤖 **Гостевой режим**
+
+Для доступа к учебным материалам необходимо:
+1. Зарегистрироваться - /Account/Register
+2. Войти в систему - /Account/Login
+
+Если у вас есть код верификации, введите его при регистрации.
+
+❓ Вопросы о платформе? Напишите ""помощь"" после входа в систему.
+";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AskGuestBotAsync");
+                return "Произошла ошибка. Попробуйте позже.";
+            }
+        }
+
+        private async Task<string?> CallOllamaChatAsync(string systemPrompt, string userContent, double temperature, int maxTokens)
+        {
+            try
+            {
+                var request = new
+                {
+                    model = _ollamaModel,
+                    messages = new object[]
+                    {
+                        new { role = "system", content = systemPrompt },
+                        new { role = "user", content = userContent }
+                    },
+                    stream = false,
+                    options = new
+                    {
+                        temperature,
+                        num_predict = maxTokens,
+                        top_p = 0.9,
+                        num_ctx = 2048
+                    }
+                };
+
+                var json = JsonSerializer.Serialize(request);
+                using var httpContent = new StringContent(json, Encoding.UTF8, "application/json");
+                var response = await _httpClient.PostAsync("api/chat", httpContent);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"  ❌ Ollama HTTP ошибка: {response.StatusCode}");
+                    _logger.LogWarning("Ollama HTTP {Code}: {Error}", response.StatusCode, error);
+                    return null;
+                }
+
+                var jsonResponse = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(jsonResponse);
+                return doc.RootElement.GetProperty("message").GetProperty("content").GetString();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  ❌ Ошибка вызова Ollama: {ex.Message}");
+                _logger.LogError(ex, "Ollama call failed");
+                return null;
+            }
+        }
+
+private async Task<string> GetUserDisciplinesAsync(AppDbContext context, int userId)
         {
             var user = await context.Users.FindAsync(userId);
             if (user == null) return "Пользователь не найден.";
@@ -734,20 +1204,18 @@ namespace diplom.Services
                 _logger.LogInformation($"📄 Создан RagDocument с ID: {ragDocument.Id}");
             }
 
-            // Создаём чанки с информацией об источнике (без странных символов)
+            // Единый формат чанка: совпадает с парсерами и с текстовыми инструкциями бота
             for (int i = 0; i < chunks.Count; i++)
             {
                 var chunk = new RagChunk
                 {
                     DocumentId = ragDocument.Id,
-                    Text = $"""
-[ИСТОЧНИК: {material.Title}]
-[ID МАТЕРИАЛА: {material.Id}]
---- СОДЕРЖАНИЕ ---
-{chunks[i]}
---- КОНЕЦ МАТЕРИАЛА ---
-Название: {material.Title}
-""",
+                    Text =
+                        $"ИСТОЧНИК: {material.Title}\n" +
+                        $"ID МАТЕРИАЛА: {material.Id}\n" +
+                        "СОДЕРЖАНИЕ:\n" +
+                        $"{chunks[i].Trim()}\n" +
+                        "--- конец фрагмента ---\n",
                     ChunkIndex = i,
                     CreatedAt = DateTime.UtcNow,
                     DisciplineId = material.DisciplineId,
@@ -892,12 +1360,24 @@ namespace diplom.Services
                     return new List<RagChunk>();
                 }
 
-                // Получаем чанки для этих дисциплин
+                var hiddenMaterialIds = await context.Materials
+                    .AsNoTracking()
+                    .Where(m => !m.IsVisible && accessibleDisciplineIds.Contains(m.DisciplineId))
+                    .Select(m => m.Id)
+                    .ToListAsync();
+
                 var studentChunks = await context.RagChunks
                     .Where(c => c.DisciplineId.HasValue && accessibleDisciplineIds.Contains(c.DisciplineId.Value))
                     .ToListAsync();
 
-                Console.WriteLine($"Student - found {studentChunks.Count} chunks");
+                if (hiddenMaterialIds.Count > 0)
+                {
+                    studentChunks = studentChunks
+                        .Where(c => !c.MaterialId.HasValue || !hiddenMaterialIds.Contains(c.MaterialId.Value))
+                        .ToList();
+                }
+
+                Console.WriteLine($"Student - found {studentChunks.Count} chunks (скрытые материалы исключены)");
 
                 return studentChunks;
             }
@@ -909,71 +1389,80 @@ namespace diplom.Services
             }
         }
 
-        private List<RagChunk> SearchRelevantChunks(string query, List<RagChunk> chunks)
+        private static List<string> TokenizeForSearch(string query)
         {
-            // Очищаем запрос от знаков препинания
-            var cleanQuery = new string(query.Where(c => char.IsLetterOrDigit(c) || char.IsWhiteSpace(c)).ToArray());
-            var queryLower = cleanQuery.ToLower();
-
-            var queryWords = queryLower.Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                .Where(w => w.Length > 2)
+            var lower = query.ToLowerInvariant();
+            var words = Regex.Matches(lower, @"\p{L}[\p{L}\p{Nd}]*")
+                .Cast<Match>()
+                .Select(m => m.Value)
+                .Where(w => w.Length >= 2)
                 .ToList();
 
-            Console.WriteLine($"Clean query: {cleanQuery}");
-            Console.WriteLine($"Query words: {string.Join(", ", queryWords)}");
+            var extra = new List<string>();
+            foreach (var w in words)
+            {
+                if (w.Length > 4)
+                    extra.Add(w[..^1]);
+            }
 
-            var results = new List<(RagChunk Chunk, int Score, string MatchedWord)>();
+            foreach (var kv in SearchKeywordBoosts)
+            {
+                if (lower.Contains(kv.Key, StringComparison.Ordinal))
+                    extra.AddRange(kv.Value);
+            }
 
+            return words.Concat(extra).Distinct().ToList();
+        }
+
+        private static int ScoreTextAgainstTokens(string text, List<string> tokens)
+        {
+            if (tokens.Count == 0)
+                return 0;
+
+            var lower = text.ToLowerInvariant();
+            var score = 0;
+            foreach (var t in tokens)
+            {
+                if (lower.Contains(t, StringComparison.Ordinal))
+                    score += t.Length >= 4 ? 2 : 1;
+            }
+
+            return score;
+        }
+
+        private List<RagChunk> SearchRelevantChunks(string query, List<RagChunk> chunks, int take)
+        {
+            if (chunks.Count == 0)
+                return new List<RagChunk>();
+
+            var tokens = TokenizeForSearch(query);
+            var cleanPhrase = new string(query.Where(c => char.IsLetterOrDigit(c) || char.IsWhiteSpace(c)).ToArray())
+                .Trim()
+                .ToLowerInvariant();
+
+            var results = new List<(RagChunk Chunk, int Score)>();
             foreach (var chunk in chunks)
             {
-                int score = 0;
-                var chunkLower = chunk.Text.ToLower();
-                List<string> matchedWords = new List<string>();
-
-                foreach (var word in queryWords)
-                {
-                    if (chunkLower.Contains(word))
-                    {
-                        score++;
-                        matchedWords.Add(word);
-                        Console.WriteLine($"  Match: '{word}' in chunk for material {chunk.MaterialId}");
-                    }
-                }
-
-                // Проверяем точное совпадение всей фразы
-                if (cleanQuery.Length > 5 && chunkLower.Contains(cleanQuery))
-                {
-                    score += 3;
-                    Console.WriteLine($"  Phrase match: '{cleanQuery}'");
-                }
-
-                // Проверяем совпадение без последней буквы (для слов с вопросом)
-                foreach (var word in queryWords)
-                {
-                    if (word.EndsWith("?"))
-                    {
-                        var wordWithoutQuestion = word.TrimEnd('?');
-                        if (chunkLower.Contains(wordWithoutQuestion))
-                        {
-                            score++;
-                            Console.WriteLine($"  Match without ?: '{wordWithoutQuestion}'");
-                        }
-                    }
-                }
+                int score = ScoreTextAgainstTokens(chunk.Text, tokens);
+                var chunkLower = chunk.Text.ToLowerInvariant();
+                if (cleanPhrase.Length >= 4 && chunkLower.Contains(cleanPhrase))
+                    score += 4;
 
                 if (score > 0)
-                {
-                    results.Add((chunk, score, string.Join(", ", matchedWords)));
-                    Console.WriteLine($"  Chunk score: {score}, matched: {string.Join(", ", matchedWords)}");
-                }
+                    results.Add((chunk, score));
             }
+
+            if (!results.Any())
+                return chunks.OrderBy(c => c.DocumentId).ThenBy(c => c.ChunkIndex).Take(Math.Min(take, chunks.Count)).ToList();
 
             return results
                 .OrderByDescending(r => r.Score)
-                .Take(5)
+                .Take(take)
                 .Select(r => r.Chunk)
                 .ToList();
         }
+
+       
 
         private async Task<string> GetOllamaResponseAsync(string query, string context)
         {
@@ -1079,7 +1568,7 @@ namespace diplom.Services
                 var json = JsonSerializer.Serialize(request);
                 var httpContent = new StringContent(json, Encoding.UTF8, "application/json");
 
-                var response = await _httpClient.PostAsync("/api/chat", httpContent);
+                var response = await _httpClient.PostAsync("api/chat", httpContent);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -1165,17 +1654,22 @@ namespace diplom.Services
             }
         }
 
-        private List<string> SplitIntoChunks(string text, int chunkSize = 500, int overlap = 100)
+        private List<string> SplitIntoChunks(string text, int chunkSize = 900, int overlap = 150)
         {
             var chunks = new List<string>();
-            if (string.IsNullOrEmpty(text)) return chunks;
+            if (string.IsNullOrEmpty(text))
+                return chunks;
 
-            for (int i = 0; i < text.Length; i += chunkSize - overlap)
+            overlap = Math.Max(0, Math.Min(overlap, chunkSize - 1));
+            var step = chunkSize - overlap;
+            for (var i = 0; i < text.Length; i += step)
             {
-                var chunk = text.Substring(i, Math.Min(chunkSize, text.Length - i));
-                chunks.Add(chunk);
-                if (i + chunkSize >= text.Length) break;
+                var len = Math.Min(chunkSize, text.Length - i);
+                chunks.Add(text.Substring(i, len));
+                if (i + chunkSize >= text.Length)
+                    break;
             }
+
             return chunks;
         }
 
