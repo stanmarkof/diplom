@@ -70,11 +70,11 @@ namespace diplom.Services
 
                 Console.WriteLine($"");
                 Console.WriteLine($"╔══════════════════════════════════════════════════════════════════╗");
-                Console.WriteLine($"║  🤖 ASK BOT - {(useAI ? "РЕЖИМ НЕЙРОСЕТИ" : "РЕЖИМ ЭМБЕДДИНГОВ")}                               ║");
+                Console.WriteLine($"║   ASK BOT - {(useAI ? "РЕЖИМ НЕЙРОСЕТИ" : "РЕЖИМ ЭМБЕДДИНГОВ")}                               ║");
                 Console.WriteLine($"╚══════════════════════════════════════════════════════════════════╝");
-                Console.WriteLine($"📝 Вопрос: \"{query}\"");
-                Console.WriteLine($"👤 UserId: {userId}");
-                Console.WriteLine($"🎮 Режим: {(useAI ? "Ollama (нейросеть)" : "Только эмбеддинги")}");
+                Console.WriteLine($" Вопрос: \"{query}\"");
+                Console.WriteLine($" UserId: {userId}");
+                Console.WriteLine($" Режим: {(useAI ? "Ollama (нейросеть)" : "Только эмбеддинги")}");
                 Console.WriteLine($"");
 
                 // Получаем роль пользователя
@@ -91,7 +91,7 @@ namespace diplom.Services
                 var isStudent = !isAdmin && !isLecturer && await context.Students.AsNoTracking().AnyAsync(s => s.Id == userId);
 
                 var userRole = isAdmin ? "Admin" : isLecturer ? "Lecturer" : "Student";
-                Console.WriteLine($"✅ Роль пользователя: {userRole}");
+                Console.WriteLine($" Роль пользователя: {userRole}");
 
                 // ==================== 1. БЫСТРЫЕ ОТВЕТЫ ====================
 
@@ -109,21 +109,36 @@ namespace diplom.Services
 
                 // ==================== 1.5 ТОЧНЫЕ СОВПАДЕНИЯ ====================
 
-               
+
                 // ==================== 2. РЕЖИМ ТОЛЬКО ЭМБЕДДИНГИ ====================
 
+                // РЕЖИМ ТОЛЬКО ЭМБЕДДИНГИ - точный поиск по базе знаний
                 if (!useAI)
                 {
                     // РЕЖИМ ТОЛЬКО ЭМБЕДДИНГИ - точный поиск по базе знаний
                     Console.WriteLine($"");
-                    Console.WriteLine($"🔍 РЕЖИМ ЭМБЕДДИНГОВ: Поиск точных совпадений...");
+                    Console.WriteLine($"РЕЖИМ ЭМБЕДДИНГОВ: Поиск точных совпадений...");
 
                     var semanticResult = await SemanticSearchAllAsync(query, userRole);
 
+                    
+
+                    // ========== ДОБАВЬТЕ ЭТОТ БЛОК ==========
+                    // Проверяем личные данные из БД (дедлайны, дисциплины, результаты и т.д.)
+                    var personalAnswer = await GetPersonalDataAnswerAsync(context, userId, query, isAdmin, isLecturer, isStudent);
+                    if (personalAnswer != null)
+                    {
+                        totalStopwatch.Stop();
+                        Console.WriteLine($" Найдено в личных данных!");
+                        await SaveToHistory(context, userId, query, personalAnswer, "Личные данные (эмбеддинги)");
+                        return personalAnswer;
+                    }
+                    // =======================================
+                    // ЕСЛИ НАШЛИ В ИНСТРУКЦИЯХ - ВОЗВРАЩАЕМ
                     if (semanticResult.HasValue && semanticResult.Value.Score > 0.55f)
                     {
                         totalStopwatch.Stop();
-                        Console.WriteLine($"✅ НАЙДЕНО ПО СМЫСЛУ!");
+                        Console.WriteLine($" НАЙДЕНО ПО СМЫСЛУ!");
                         Console.WriteLine($"   Релевантность: {semanticResult.Value.Score:P0}");
                         Console.WriteLine($"   Источник: {semanticResult.Value.Source}");
                         Console.WriteLine($"   Время: {totalStopwatch.ElapsedMilliseconds} мс");
@@ -132,21 +147,11 @@ namespace diplom.Services
                         return semanticResult.Value.Answer;
                     }
 
-                    // Проверяем личные данные из БД
-                    var personalAnswer = await GetPersonalDataAnswerAsync(context, userId, query, isAdmin, isLecturer, isStudent);
-                    if (personalAnswer != null)
-                    {
-                        totalStopwatch.Stop();
-                        Console.WriteLine($"✅ Найдено в личных данных!");
-                        await SaveToHistory(context, userId, query, personalAnswer, "Личные данные (эмбеддинги)");
-                        return personalAnswer;
-                    }
-
                     // Если ничего не найдено
                     totalStopwatch.Stop();
-                    var notFoundMessage = "❌ **Информация не найдена**\n\n" +
+                    var notFoundMessage = "**Информация не найдена**\n\n" +
                                          "В базе знаний нет информации по вашему вопросу.\n\n" +
-                                         "💡 **Что делать?**\n" +
+                                         " **Что делать?**\n" +
                                          "• Попробуйте переформулировать вопрос\n" +
                                          "• Включите режим нейросети для генерации ответа\n" +
                                          "• Обратитесь к администратору за помощью";
@@ -159,18 +164,18 @@ namespace diplom.Services
 
                 Console.WriteLine($"");
                 Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                Console.WriteLine($"🚀 РЕЖИМ НЕЙРОСЕТИ: Будет вызван Ollama");
+                Console.WriteLine($" РЕЖИМ НЕЙРОСЕТИ: Будет вызван Ollama");
                 Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
                 var ollamaStopwatch = Stopwatch.StartNew();
 
                 // Сбор данных из БД
-                Console.WriteLine($"📊 Сбор данных из БД для контекста...");
+                Console.WriteLine($" Сбор данных из БД для контекста...");
                 var dbData = await CollectDatabaseDataAsync(context, userId, isAdmin, isLecturer, isStudent);
-                Console.WriteLine($"✅ Данные из БД собраны. Размер: {dbData.Length} символов");
+                Console.WriteLine($" Данные из БД собраны. Размер: {dbData.Length} символов");
 
                 // Поиск в учебных материалах
-                Console.WriteLine($"📚 Поиск в учебных материалах (RAG)...");
+                Console.WriteLine($" Поиск в учебных материалах (RAG)...");
                 var chunks = await GetAccessibleChunksForUserAsync(context, userId);
                 var knowledgeContext = new StringBuilder();
 
@@ -183,18 +188,18 @@ namespace diplom.Services
                         knowledgeContext.AppendLine(result.Text);
                         knowledgeContext.AppendLine();
                     }
-                    Console.WriteLine($"✅ Найдено релевантных чанков: {results.Count}");
+                    Console.WriteLine($" Найдено релевантных чанков: {results.Count}");
                 }
                 else
                 {
-                    Console.WriteLine($"⚠️ Чанки не найдены. База знаний пуста.");
+                    Console.WriteLine($" Чанки не найдены. База знаний пуста.");
                 }
 
                 // История диалога
                 var historyContext = await GetRecentHistoryContextAsync(context, userId);
                 if (!string.IsNullOrEmpty(historyContext))
                 {
-                    Console.WriteLine($"📜 История диалога загружена. Размер: {historyContext.Length} символов");
+                    Console.WriteLine($" История диалога загружена. Размер: {historyContext.Length} символов");
                 }
 
                 // Формируем контекст
@@ -206,19 +211,19 @@ namespace diplom.Services
                 var contextStr = fullContext.ToString();
                 if (contextStr.Length > 4000)
                 {
-                    Console.WriteLine($"⚠️ Контекст слишком большой ({contextStr.Length} символов), сокращаем до 4000");
+                    Console.WriteLine($" Контекст слишком большой ({contextStr.Length} символов), сокращаем до 4000");
                     contextStr = contextStr.Substring(0, 4000) + "...(контекст сокращён)";
                 }
-                Console.WriteLine($"📦 Итоговый контекст: {contextStr.Length} символов");
+                Console.WriteLine($" Итоговый контекст: {contextStr.Length} символов");
 
                 // Отправляем в Ollama
                 var systemPrompt = $"Ты — AI-помощник системы обучения. Пользователь: {(isAdmin ? "Админ" : isLecturer ? "Преподаватель" : "Студент")}. Отвечай на основе контекста. Будь краток.";
                 var userPayload = $"ВОПРОС: {query}\n\nКОНТЕКСТ:\n{contextStr}";
 
                 Console.WriteLine($"");
-                Console.WriteLine($"🤖 ОТПРАВКА ЗАПРОСА В OLLAMA...");
-                Console.WriteLine($"📋 Модель: {_ollamaModel}");
-                Console.WriteLine($"⏰ Время отправки: {DateTime.Now:HH:mm:ss.fff}");
+                Console.WriteLine($" ОТПРАВКА ЗАПРОСА В OLLAMA...");
+                Console.WriteLine($" Модель: {_ollamaModel}");
+                Console.WriteLine($" Время отправки: {DateTime.Now:HH:mm:ss.fff}");
                 Console.WriteLine($"");
 
                 var answer = await CallOllamaChatAsync(systemPrompt, userPayload, temperature: 0.3, maxTokens: 800);
@@ -226,15 +231,15 @@ namespace diplom.Services
                 ollamaStopwatch.Stop();
                 Console.WriteLine($"");
                 Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                Console.WriteLine($"✅ OLLAMA ОТВЕТИЛ за {ollamaStopwatch.ElapsedMilliseconds} мс");
+                Console.WriteLine($" OLLAMA ОТВЕТИЛ за {ollamaStopwatch.ElapsedMilliseconds} мс");
                 Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
                 Console.WriteLine($"");
 
                 if (answer != null)
                 {
-                    Console.WriteLine($"📝 Ответ получен, длина: {answer.Length} символов");
+                    Console.WriteLine($"Ответ получен, длина: {answer.Length} символов");
                     await SaveToHistory(context, userId, query, answer, "RAG+Ollama");
-                    Console.WriteLine($"⏱️ ОБЩЕЕ ВРЕМЯ: {totalStopwatch.ElapsedMilliseconds} мс");
+                    Console.WriteLine($" ОБЩЕЕ ВРЕМЯ: {totalStopwatch.ElapsedMilliseconds} мс");
                     return answer;
                 }
 
@@ -242,7 +247,7 @@ namespace diplom.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ КРИТИЧЕСКАЯ ОШИБКА: {ex.Message}");
+                Console.WriteLine($" КРИТИЧЕСКАЯ ОШИБКА: {ex.Message}");
                 _logger.LogError(ex, "Error in AskBotAsync");
                 return "Произошла ошибка. Пожалуйста, попробуйте еще раз.";
             }
@@ -296,7 +301,7 @@ namespace diplom.Services
 
             // Нормализуем запрос для лучшего поиска
             var normalizedQuery = NormalizeQuery(query);
-            Console.WriteLine($"  📝 Нормализованный запрос: '{normalizedQuery}'");
+            Console.WriteLine($"   Нормализованный запрос: '{normalizedQuery}'");
 
             // 1. Получаем эмбеддинг вопроса (используем оригинальный и нормализованный)
             var queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(query);
@@ -308,7 +313,7 @@ namespace diplom.Services
             var results = new List<(float Score, string Answer, string Source, string Title, string Keywords)>();
 
             // 2. Поиск по инструкциям
-            Console.WriteLine($"  📋 Поиск по инструкциям...");
+            Console.WriteLine($"   Поиск по инструкциям...");
             var instructions = await context.BotInstructions
                 .Where(i => i.IsActive && (i.Role == "All" || i.Role == userRole))
                 .ToListAsync();
@@ -319,7 +324,7 @@ namespace diplom.Services
                 var instrTitleNorm = NormalizeQuery(instr.Title);
                 if (instrTitleNorm.Contains(normalizedQuery) || normalizedQuery.Contains(instrTitleNorm))
                 {
-                    Console.WriteLine($"    ✅ Точное совпадение заголовка: {instr.Title}");
+                    Console.WriteLine($"     Точное совпадение заголовка: {instr.Title}");
                     results.Add((1.0f, instr.Answer, "Инструкция", instr.Title, instr.Title));
                     continue;
                 }
@@ -342,7 +347,7 @@ namespace diplom.Services
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"  ⚠️ Ошибка десериализации эмбеддинга для {instr.Title}: {ex.Message}");
+                        Console.WriteLine($"   Ошибка десериализации эмбеддинга для {instr.Title}: {ex.Message}");
                     }
                 }
 
@@ -364,7 +369,7 @@ namespace diplom.Services
             // 3. Сортируем и выбираем лучший
             var sortedResults = results.OrderByDescending(r => r.Score).ToList();
 
-            Console.WriteLine($"  🎯 Всего результатов: {results.Count}");
+            Console.WriteLine($"   Всего результатов: {results.Count}");
             foreach (var r in sortedResults.Take(3))
             {
                 Console.WriteLine($"    - {r.Source}: '{r.Title}' (оценка: {r.Score:P1})");
@@ -376,7 +381,7 @@ namespace diplom.Services
 
             if (best.Score > 0.55f)
             {
-                Console.WriteLine($"  ✅ Лучший результат: {best.Source} - {best.Title} (оценка: {best.Score:P1})");
+                Console.WriteLine($"   Лучший результат: {best.Source} - {best.Title} (оценка: {best.Score:P1})");
                 return (best.Answer, best.Source, best.Score);
             }
 
@@ -682,6 +687,12 @@ namespace diplom.Services
                 return await GetAvailableTestsAsync(context, userId);
             }
 
+            if (queryLower.Contains("дедлайн") || queryLower.Contains("срок") || queryLower.Contains("сдавать") || queryLower.Contains("deadline"))
+            {
+                Console.WriteLine($"  → Запрос к БД: дедлайны");
+                return await GetTestDeadlinesAsync(context, userId);
+            }
+
             if (isAdmin && (queryLower.Contains("статистик") || queryLower.Contains("сколько")))
             {
                 Console.WriteLine($"  → Запрос к БД: статистика");
@@ -693,13 +704,13 @@ namespace diplom.Services
                 var testsCount = await context.Tests.CountAsync();
 
                 return $@"
-📊 **Статистика системы:**
+Статистика системы:
 
-👥 Пользователей: {usersCount}
-👨‍🏫 Преподавателей: {await context.Lecturers.CountAsync()}
-👨‍🎓 Студентов: {await context.Students.CountAsync()}
+Пользователей: {usersCount}
+Преподавателей: {await context.Lecturers.CountAsync()}
+Студентов: {await context.Students.CountAsync()}
 
-📚 Учебные данные:
+Учебные данные:
 • Дисциплин: {disciplinesCount}
 • Курсов: {coursesCount}
 • Групп: {groupsCount}
@@ -717,16 +728,16 @@ namespace diplom.Services
         {
             var roleText = role == "Admin" ? "Администратор" : role == "Lecturer" ? "Преподаватель" : "Студент";
             return $@"
-🤖 **Привет, {userName ?? "пользователь"}!**
+Привет, {userName ?? "пользователь"}!
 
-Я AI-помощник. Ваша роль: **{roleText}**
+Я Бот-помощник. Ваша роль: {roleText}
 
-💡 **Что я могу:**
+Что я могу:
 • Отвечать на вопросы по вашим дисциплинам, тестам и материалам
 • Помогать с навигацией по платформе
 • Подсказывать, как создавать материалы и тесты
 
-📝 **Попробуйте спросить:**
+Попробуйте спросить:
 • ""как создать материал""
 • ""как создать тест""
 • ""мои дисциплины""
@@ -740,9 +751,9 @@ namespace diplom.Services
             if (role == "Admin")
             {
                 return @"
-📋 **Справка для администратора**
+Справка для администратора
 
-**Управление:**
+Управление:
 • Все пользователи - /Admin/AllUsers
 • Создать преподавателя - /Admin/CreateLecturer
 • Создать администратора - /Admin/CreateAdmin
@@ -750,11 +761,11 @@ namespace diplom.Services
 • Курсы - /Admin/ManageCourses
 • Дисциплины - /Admin/ManageDisciplines
 
-**Настройки:**
+Настройки:
 • Код регистрации - /Admin/ChangeVerificationCode
 • Обратная связь - /Admin/ViewFeedbacks
 
-**Быстрые команды:**
+Быстрые команды:
 • ""как создать группу""
 • ""как создать курс""
 • ""как создать дисциплину""
@@ -763,17 +774,17 @@ namespace diplom.Services
             else if (role == "Lecturer")
             {
                 return @"
-📋 **Справка для преподавателя**
+Справка для преподавателя
 
-**Мои дисциплины:** /Lecturer/Index
+Мои дисциплины: /Lecturer/Index
 
-**Возможности:**
+Возможности:
 • Добавлять учебные материалы
 • Создавать тесты и вопросы
 • Управлять разделами дисциплин
 • Загружать файлы
 
-**Быстрые команды:**
+Быстрые команды:
 • ""как создать материал""
 • ""как создать тест""
 • ""как загрузить файл""
@@ -783,18 +794,18 @@ namespace diplom.Services
             else
             {
                 return @"
-📋 **Справка для студента**
+Справка для студента
 
-**Разделы:**
+Разделы:
 • Мои дисциплины - в боковом меню
 • Мои тесты - в боковом меню
 
-**Что можно:**
+Что можно:
 • Проходить доступные тесты
 • Скачивать учебные материалы
 • Смотреть результаты
 
-**Быстрые команды:**
+Быстрые команды:
 • ""мои дисциплины""
 • ""дедлайны""
 • ""мои результаты""
@@ -820,7 +831,7 @@ namespace diplom.Services
                 var disciplinesCount = await context.Disciplines.CountAsync();
                 var usersCount = await context.Users.CountAsync();
 
-                dbData.AppendLine($"\n📊 Статистика системы:");
+                dbData.AppendLine($"\nСтатистика системы:");
                 dbData.AppendLine($"• Групп: {groupsCount}");
                 dbData.AppendLine($"• Курсов: {coursesCount}");
                 dbData.AppendLine($"• Дисциплин: {disciplinesCount}");
@@ -829,14 +840,14 @@ namespace diplom.Services
             else if (isLecturer)
             {
                 var lecturer = await context.Lecturers.FirstOrDefaultAsync(l => l.Id == userId);
-                dbData.AppendLine($"\n👨‍🏫 Преподаватель: {lecturer?.FullName}");
+                dbData.AppendLine($"\n Преподаватель: {lecturer?.FullName}");
                 dbData.AppendLine($"Кафедра: {lecturer?.Department ?? "не указана"}");
 
                 var myDisciplines = await context.Disciplines
                     .Where(d => d.DisciplineLecturers.Any(dl => dl.LecturerId == userId))
                     .ToListAsync();
 
-                dbData.AppendLine($"\n📚 Ваши дисциплины ({myDisciplines.Count}):");
+                dbData.AppendLine($"\n Ваши дисциплины ({myDisciplines.Count}):");
                 foreach (var d in myDisciplines)
                 {
                     var materialsCount = await context.Materials.CountAsync(m => m.DisciplineId == d.Id);
@@ -852,14 +863,14 @@ namespace diplom.Services
 
                 if (student?.StudentGroup != null)
                 {
-                    dbData.AppendLine($"\n👨‍🎓 Студент: {student.FullName}");
+                    dbData.AppendLine($"\n Студент: {student.FullName}");
                     dbData.AppendLine($"Группа: {student.StudentGroup.Name}");
 
                     var accessibleDisciplines = await context.Disciplines
                         .Where(d => d.OpenGroups.Any(g => g.Id == student.StudentGroupId))
                         .ToListAsync();
 
-                    dbData.AppendLine($"\n📚 Доступные дисциплины ({accessibleDisciplines.Count}):");
+                    dbData.AppendLine($"\n Доступные дисциплины ({accessibleDisciplines.Count}):");
                     foreach (var d in accessibleDisciplines)
                     {
                         dbData.AppendLine($"  • {d.Name}");
@@ -889,7 +900,7 @@ namespace diplom.Services
                 }
 
                 return @"
-🤖 **Гостевой режим**
+Гостевой режим
 
 Для доступа к учебным материалам необходимо:
 1. Зарегистрироваться - /Account/Register
@@ -897,7 +908,7 @@ namespace diplom.Services
 
 Если у вас есть код верификации, введите его при регистрации.
 
-❓ Вопросы о платформе? Напишите ""помощь"" после входа в систему.
+Вопросы о платформе? Напишите ""помощь"" после входа в систему.
 ";
             }
             catch (Exception ex)
@@ -972,7 +983,7 @@ private async Task<string> GetUserDisciplinesAsync(AppDbContext context, int use
                 if (!allDisciplines.Any())
                     return "В системе пока нет дисциплин.";
 
-                var result = "📚 **Все дисциплины в системе:**\n\n";
+                var result = "Все дисциплины в системе:\n\n";
                 foreach (var disc in allDisciplines)
                 {
                     result += $"• {disc.Name} ({disc.Course?.Code})\n";
@@ -995,13 +1006,13 @@ private async Task<string> GetUserDisciplinesAsync(AppDbContext context, int use
                 if (!disciplines.Any())
                     return "У вас пока нет дисциплин.";
 
-                var result = "📚 **Ваши дисциплины (преподаватель):**\n\n";
+                var result = "Ваши дисциплины (преподаватель):\n\n";
                 foreach (var disc in disciplines)
                 {
                     var materialsCount = await context.Materials.CountAsync(m => m.DisciplineId == disc.Id);
                     var testsCount = await context.Tests.CountAsync(t => t.DisciplineId == disc.Id);
-                    result += $"• **{disc.Name}** ({disc.Course?.Code})\n";
-                    result += $"  📄 Материалов: {materialsCount} | 📝 Тестов: {testsCount}\n";
+                    result += $"•{disc.Name} ({disc.Course?.Code})\n";
+                    result += $" Материалов: {materialsCount} | Тестов: {testsCount}\n";
                 }
                 return result;
             }
@@ -1022,11 +1033,11 @@ private async Task<string> GetUserDisciplinesAsync(AppDbContext context, int use
             if (!accessibleDisciplines.Any())
                 return "Для вашей группы пока нет доступных дисциплин.";
 
-            var resultText = "📚 **Ваши дисциплины:**\n\n";
+            var resultText = "Ваши дисциплины:\n\n";
             foreach (var disc in accessibleDisciplines)
             {
-                resultText += $"• **{disc.Name}** ({disc.Course?.Code})\n";
-                resultText += $"  🎓 {disc.CourseNumber} курс, {disc.Semester} семестр\n";
+                resultText += $"• {disc.Name} ({disc.Course?.Code})\n";
+                resultText += $"   {disc.CourseNumber} курс, {disc.Semester} семестр\n";
             }
             return resultText;
         }
@@ -1038,7 +1049,7 @@ private async Task<string> GetUserDisciplinesAsync(AppDbContext context, int use
                 .FirstOrDefaultAsync(s => s.Id == userId);
 
             if (student?.StudentGroup == null)
-                return "Вы не прикреплены к группе.";
+                return "Вы не прикреплены к группе. Обратитесь к администратору.";
 
             var accessibleDisciplineIds = await context.Disciplines
                 .Where(d => d.OpenGroups.Any(g => g.Id == student.StudentGroupId))
@@ -1056,12 +1067,24 @@ private async Task<string> GetUserDisciplinesAsync(AppDbContext context, int use
             if (!testsWithDeadlines.Any())
                 return "У вас нет предстоящих дедлайнов по тестам.";
 
-            var result = "⏰ **Предстоящие дедлайны тестов:**\n\n";
+            var result = "Ваши предстоящие дедлайны по тестам:\n\n";
             foreach (var test in testsWithDeadlines)
             {
                 var daysLeft = (test.Deadline.Value - DateTime.UtcNow).Days;
-                result += $"• **{test.Title}** ({test.Discipline?.Name})\n";
-                result += $"  📅 Дедлайн: {test.Deadline.Value:dd.MM.yyyy HH:mm} (осталось {daysLeft} дн.)\n";
+                var hoursLeft = (test.Deadline.Value - DateTime.UtcNow).Hours;
+
+                string urgency = daysLeft <= 1 ? " СРОЧНО! " : "";
+
+                result += $"{urgency}{test.Title}**\n";
+                result += $" Дисциплина: {test.Discipline?.Name}\n";
+                result += $" Дедлайн: {test.Deadline.Value:dd.MM.yyyy HH:mm}\n";
+
+                if (daysLeft > 0)
+                    result += $" Осталось дней: {daysLeft}\n";
+                else if (hoursLeft > 0)
+                    result += $" Осталось часов: {hoursLeft}\n";
+
+                result += "\n";
             }
             return result;
         }
@@ -1079,14 +1102,14 @@ private async Task<string> GetUserDisciplinesAsync(AppDbContext context, int use
             if (!results.Any())
                 return "Вы ещё не проходили тесты.";
 
-            var result = "📊 **Ваши результаты тестов:**\n\n";
+            var result = "Ваши результаты тестов:\n\n";
             foreach (var res in results)
             {
                 var percentage = (double)res.Score / res.MaxScore * 100;
                 var grade = percentage >= 85 ? "5" : percentage >= 70 ? "4" : percentage >= 50 ? "3" : "2";
-                result += $"• **{res.Test.Title}** ({res.Test.Discipline?.Name})\n";
-                result += $"  📝 Баллы: {res.Score}/{res.MaxScore} ({percentage:F1}%) | Оценка: {grade}\n";
-                result += $"  📅 Пройден: {res.CompletedAt:dd.MM.yyyy}\n\n";
+                result += $"• {res.Test.Title} ({res.Test.Discipline?.Name})\n";
+                result += $"  Баллы: {res.Score}/{res.MaxScore} ({percentage:F1}%) | Оценка: {grade}\n";
+                result += $"  Пройден: {res.CompletedAt:dd.MM.yyyy}\n\n";
             }
             return result;
         }
@@ -1101,9 +1124,9 @@ private async Task<string> GetUserDisciplinesAsync(AppDbContext context, int use
             if (student?.StudentGroup == null)
                 return "Вы не прикреплены ни к одной группе.";
 
-            return $"🎓 **Ваша группа:** {student.StudentGroup.Name}\n" +
-                   $"📚 **Направление:** {student.StudentGroup.Course?.Code} - {student.StudentGroup.Course?.Name}\n" +
-                   $"📅 **Год поступления:** {student.StudentGroup.YearOfAdmission}";
+            return $"Ваша группа: {student.StudentGroup.Name}\n" +
+                   $"Направление: {student.StudentGroup.Course?.Code} - {student.StudentGroup.Course?.Name}\n" +
+                   $"Год поступления: {student.StudentGroup.YearOfAdmission}";
         }
 
         private async Task<string> GetAvailableTestsAsync(AppDbContext context, int userId)
@@ -1131,12 +1154,12 @@ private async Task<string> GetUserDisciplinesAsync(AppDbContext context, int use
             if (!availableTests.Any())
                 return "У вас пока нет доступных тестов.";
 
-            var result = "📝 **Доступные тесты:**\n\n";
+            var result = "Доступные тесты:\n\n";
             foreach (var test in availableTests)
             {
                 var deadline = test.Deadline.HasValue ? $"Дедлайн: {test.Deadline.Value:dd.MM.yyyy}" : "Без дедлайна";
-                result += $"• **{test.Title}** ({test.Discipline?.Name})\n";
-                result += $"  ⏱ Длительность: {test.DurationMinutes} мин. | {deadline}\n";
+                result += $"• {test.Title} ({test.Discipline?.Name})\n";
+                result += $"  Длительность: {test.DurationMinutes} мин. | {deadline}\n";
             }
             return result;
         }
@@ -1152,7 +1175,7 @@ private async Task<string> GetUserDisciplinesAsync(AppDbContext context, int use
                 return;
             }
 
-            _logger.LogInformation($"📚 Начинаем индексацию материала: {material.Title}");
+            _logger.LogInformation($"Начинаем индексацию материала: {material.Title}");
 
             // Удаляем старые чанки
             var existingChunks = await context.RagChunks
@@ -1163,7 +1186,7 @@ private async Task<string> GetUserDisciplinesAsync(AppDbContext context, int use
             {
                 context.RagChunks.RemoveRange(existingChunks);
                 await context.SaveChangesAsync();
-                _logger.LogInformation($"🗑️ Удалено {existingChunks.Count} старых чанков");
+                _logger.LogInformation($"Удалено {existingChunks.Count} старых чанков");
             }
 
             // Получаем текст для индексации
@@ -1171,7 +1194,7 @@ private async Task<string> GetUserDisciplinesAsync(AppDbContext context, int use
             if (!string.IsNullOrEmpty(material.FilePath))
             {
                 text = await ExtractTextFromFileAsync(material.FilePath);
-                _logger.LogInformation($"📄 Текст из файла: {text.Length} символов");
+                _logger.LogInformation($"Текст из файла: {text.Length} символов");
             }
 
             if (string.IsNullOrEmpty(text))
@@ -1182,7 +1205,7 @@ private async Task<string> GetUserDisciplinesAsync(AppDbContext context, int use
 
             // Разбиваем на чанки
             var chunks = SplitIntoChunks(text);
-            _logger.LogInformation($"📊 Текст разбит на {chunks.Count} чанков");
+            _logger.LogInformation($"Текст разбит на {chunks.Count} чанков");
 
             // Создаём запись в RagDocuments
             var ragDocument = await context.RagDocuments
@@ -1201,7 +1224,7 @@ private async Task<string> GetUserDisciplinesAsync(AppDbContext context, int use
                 };
                 context.RagDocuments.Add(ragDocument);
                 await context.SaveChangesAsync();
-                _logger.LogInformation($"📄 Создан RagDocument с ID: {ragDocument.Id}");
+                _logger.LogInformation($"Создан RagDocument с ID: {ragDocument.Id}");
             }
 
             // Единый формат чанка: совпадает с парсерами и с текстовыми инструкциями бота
@@ -1227,7 +1250,7 @@ private async Task<string> GetUserDisciplinesAsync(AppDbContext context, int use
 
             material.IsIndexed = true;
             await context.SaveChangesAsync();
-            _logger.LogInformation($"✅ Материал {material.Title} проиндексирован ({chunks.Count} чанков)");
+            _logger.LogInformation($"Материал {material.Title} проиндексирован ({chunks.Count} чанков)");
         }
 
         public async Task DeleteMaterialIndexAsync(int materialId)
@@ -1243,7 +1266,7 @@ private async Task<string> GetUserDisciplinesAsync(AppDbContext context, int use
             {
                 context.RagChunks.RemoveRange(chunks);
                 await context.SaveChangesAsync();
-                _logger.LogInformation($"🗑️ Индекс материала {materialId} удален");
+                _logger.LogInformation($"Индекс материала {materialId} удален");
             }
 
             var ragDocument = await context.RagDocuments
@@ -1253,7 +1276,7 @@ private async Task<string> GetUserDisciplinesAsync(AppDbContext context, int use
             {
                 context.RagDocuments.Remove(ragDocument);
                 await context.SaveChangesAsync();
-                _logger.LogInformation($"🗑️ Удалён RagDocument для материала {materialId}");
+                _logger.LogInformation($"Удалён RagDocument для материала {materialId}");
             }
         }
 
@@ -1262,7 +1285,7 @@ private async Task<string> GetUserDisciplinesAsync(AppDbContext context, int use
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-            _logger.LogInformation("🔄 Начало перестроения индексов...");
+            _logger.LogInformation(" Начало перестроения индексов...");
 
             await context.Database.ExecuteSqlRawAsync("DELETE FROM RagChunks");
             await context.Database.ExecuteSqlRawAsync("DELETE FROM RagDocuments");
@@ -1276,7 +1299,7 @@ private async Task<string> GetUserDisciplinesAsync(AppDbContext context, int use
                 await IndexMaterialAsync(material, forceReindex: true);
             }
 
-            _logger.LogInformation($"✅ Перестроение индексов завершено. Обработано {materials.Count} материалов");
+            _logger.LogInformation($" Перестроение индексов завершено. Обработано {materials.Count} материалов");
         }
 
         private async Task<List<RagChunk>> GetAccessibleChunksForUserAsync(AppDbContext context, int userId)

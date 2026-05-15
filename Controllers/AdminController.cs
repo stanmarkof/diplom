@@ -1687,6 +1687,89 @@ public async Task<IActionResult> IndexDisc()
 
             return Json(new { success = true, message = "Изменений не требуется" });
         }
+
+        // ==================== ПРОСМОТР ТЕСТА С РЕЗУЛЬТАТАМИ ДЛЯ АДМИНА ====================
+
+        [HttpGet]
+        public async Task<IActionResult> TestWithResults(int id)
+        {
+            try
+            {
+                var currentUser = await _userManager.GetUserAsync(User);
+                if (currentUser == null)
+                {
+                    return RedirectToAction("Login", "Account");
+                }
+
+                var test = await _context.Tests
+                    .Include(t => t.Discipline)
+                    .Include(t => t.Section)
+                    .Include(t => t.Questions)
+                    .Include(t => t.TestResults)
+                        .ThenInclude(tr => tr.Student)
+                            .ThenInclude(s => s.StudentGroup)
+                    .FirstOrDefaultAsync(t => t.Id == id);
+
+                if (test == null)
+                {
+                    TempData["ErrorMessage"] = "Тест не найден";
+                    return RedirectToAction("IndexDisc");
+                }
+
+                return View(test);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка в TestWithResults");
+                TempData["ErrorMessage"] = "Произошла ошибка при загрузке теста";
+                return RedirectToAction("IndexDisc");
+            }
+        }
+
+        // ==================== ПРОСМОТР ДЕТАЛЕЙ РЕЗУЛЬТАТА ДЛЯ АДМИНА ====================
+
+        [HttpGet]
+        public async Task<IActionResult> TestResultDetails(int id)
+        {
+            try
+            {
+                var currentUser = await _userManager.GetUserAsync(User);
+                if (currentUser == null)
+                {
+                    return RedirectToAction("Login", "Account");
+                }
+
+                var result = await _context.TestResults
+                    .Include(r => r.Student)
+                    .Include(r => r.Test)
+                        .ThenInclude(t => t.Questions)
+                    .Include(r => r.Test)
+                        .ThenInclude(t => t.Discipline)
+                    .FirstOrDefaultAsync(r => r.Id == id);
+
+                if (result == null)
+                {
+                    TempData["ErrorMessage"] = "Результат не найден";
+                    return RedirectToAction("IndexDisc");
+                }
+
+                // Десериализуем ответы
+                var answers = string.IsNullOrEmpty(result.AnswersJson)
+                    ? new Dictionary<int, string>()
+                    : System.Text.Json.JsonSerializer.Deserialize<Dictionary<int, string>>(result.AnswersJson);
+
+                ViewBag.Answers = answers;
+                ViewBag.Questions = result.Test.Questions.OrderBy(q => q.Id).ToList();
+
+                return View(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка в TestResultDetails");
+                TempData["ErrorMessage"] = "Произошла ошибка при загрузке результата";
+                return RedirectToAction("IndexDisc");
+            }
+        }
     }
 
 

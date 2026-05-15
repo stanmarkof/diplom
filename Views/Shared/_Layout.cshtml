@@ -273,9 +273,9 @@
             <div class="bot-container">
                 <div class="bot-header">
                     <div class="bot-header-info">
-                        <div class="bot-avatar">🤖</div>
+                        
                         <div>
-                            <h5>AI Помощник</h5>
+                            <h5>Бот Помощник</h5>
                             <small>@(User.Identity?.IsAuthenticated == true ? "С учётом вашей роли" : "Справка для гостя")</small>
                         </div>
                     </div>
@@ -319,14 +319,90 @@
     <!-- Виджеты только для авторизованных -->
     @if (User.Identity.IsAuthenticated)
     {
-        <!-- Виджет чата (мессенджер) -->
-        <div class="chat-widget">
-            <button id="chatToggleBtn" class="chat-toggle-btn" title="Открыть чат">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="currentColor" />
-                </svg>
-            </button>
-        </div>
+        
+
+        <!-- Виджет чата (мессенджер) - только для авторизованных -->
+        @if (User.Identity.IsAuthenticated)
+        {
+            <div class="chat-widget">
+                <button id="chatToggleBtn" class="chat-toggle-btn" title="Открыть чат">
+                    <span id="chatUnreadBadge" class="unread-badge" style="display: none;">0</span>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="currentColor" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Окно чата -->
+            <div id="chatWindow" class="chat-window">
+                <div class="bot-header">
+                    <div class="bot-header-info">
+                        <div class="bot-avatar">💬</div>
+                        <div>
+                            <h5 id="chatWindowTitle">Сообщения</h5>
+                            <small>Общение с пользователями</small>
+                        </div>
+                    </div>
+                    <button id="chatCloseBtn" class="bot-close-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Список диалогов (главный экран) -->
+                <div id="chatDialogsView" style="display: flex; flex-direction: column; height: 100%;">
+                    <div style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">
+                        <button id="newChatBtn" class="btn btn-sm btn-primary w-100">
+                            <i class="fas fa-plus"></i> Новый чат
+                        </button>
+                    </div>
+                    <div id="chatDialogsList" class="chat-dialogs-list-widget">
+                        <!-- Диалоги загрузятся через JS -->
+                        <div class="text-center text-muted p-3">Загрузка...</div>
+                    </div>
+                </div>
+
+                <!-- Новый чат - выбор пользователя -->
+                <div id="chatNewChatView" style="display: none; flex-direction: column; height: 100%;">
+                    <div style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">
+                        <button id="chatBackToDialogs" class="chat-back-btn">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <span>Выберите пользователя</span>
+                    </div>
+                    <div id="chatUsersList" class="chat-users-list">
+                        <!-- Пользователи загрузятся через JS -->
+                        <div class="text-center text-muted p-3">Загрузка...</div>
+                    </div>
+                </div>
+
+                <!-- Диалог с сообщениями -->
+                <div id="chatMessagesView" style="display: none; flex-direction: column; height: 100%;">
+                    <div style="padding: 0.75rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.5rem;">
+                        <button id="chatBackToDialogsFromMessages" class="chat-back-btn">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <div>
+                            <strong id="chatCurrentUserName"></strong>
+                            <br />
+                            <small class="text-muted" id="chatCurrentUserRole"></small>
+                        </div>
+                    </div>
+                    <div id="chatMessagesList" class="chat-messages-container-widget">
+                        <!-- Сообщения загрузятся через JS -->
+                    </div>
+                    <div class="chat-input-area-widget">
+                        <input type="text" id="chatMessageInput" class="chat-input-widget" placeholder="Введите сообщение..." />
+                        <button id="chatSendMsgBtn" class="chat-send-btn-widget">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
     }
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
@@ -510,13 +586,285 @@
         if (botSendBtn) botSendBtn.addEventListener('click', sendBotMessage);
         if (botInput) botInput.addEventListener('keypress', (e) => e.key === 'Enter' && sendBotMessage());
 
-        // Чат-виджет (просто кнопка для открытия мессенджера)
-        const chatToggleBtn = document.getElementById('chatToggleBtn');
-        if (chatToggleBtn) {
-            chatToggleBtn.addEventListener('click', () => {
-                window.location.href = '/Chat/Index';
+            // ==================== ВИДЖЕТ ЧАТА (МЕССЕНДЖЕР) ====================
+    const chatToggleBtn = document.getElementById('chatToggleBtn');
+    const chatWindow = document.getElementById('chatWindow');
+    const chatCloseBtn = document.getElementById('chatCloseBtn');
+    const chatDialogsView = document.getElementById('chatDialogsView');
+    const chatNewChatView = document.getElementById('chatNewChatView');
+    const chatMessagesView = document.getElementById('chatMessagesView');
+    const chatDialogsList = document.getElementById('chatDialogsList');
+    const chatUsersList = document.getElementById('chatUsersList');
+    const chatMessagesList = document.getElementById('chatMessagesList');
+    const chatMessageInput = document.getElementById('chatMessageInput');
+    const chatSendMsgBtn = document.getElementById('chatSendMsgBtn');
+    const newChatBtn = document.getElementById('newChatBtn');
+    const chatBackToDialogs = document.getElementById('chatBackToDialogs');
+    const chatBackToDialogsFromMessages = document.getElementById('chatBackToDialogsFromMessages');
+    const chatCurrentUserName = document.getElementById('chatCurrentUserName');
+    const chatCurrentUserRole = document.getElementById('chatCurrentUserRole');
+    const chatWindowTitle = document.getElementById('chatWindowTitle');
+    const chatUnreadBadge = document.getElementById('chatUnreadBadge');
+    
+    let currentChatOtherUserId = null;
+    let chatPollingInterval = null;
+    let allDialogs = [];
+    
+    // Открыть/закрыть виджет чата
+    if (chatToggleBtn) {
+        chatToggleBtn.addEventListener('click', () => {
+            chatWindow.classList.toggle('active');
+            if (chatWindow.classList.contains('active')) {
+                loadDialogs();
+            }
+        });
+    }
+    if (chatCloseBtn) chatCloseBtn.addEventListener('click', () => chatWindow.classList.remove('active'));
+    
+    // Загрузка диалогов
+    async function loadDialogs() {
+        try {
+            const response = await fetch('/Chat/GetDialogs');
+            const data = await response.json();
+            if (data.success) {
+                allDialogs = data.dialogs;
+                renderDialogs(data.dialogs);
+                
+                // Обновляем счетчик непрочитанных
+                const unreadCount = data.dialogs.reduce((sum, d) => sum + d.unreadCount, 0);
+                if (unreadCount > 0) {
+                    chatUnreadBadge.style.display = 'flex';
+                    chatUnreadBadge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+                } else {
+                    chatUnreadBadge.style.display = 'none';
+                }
+            }
+        } catch (error) {
+            console.error('Error loading dialogs:', error);
+        }
+    }
+    
+    function renderDialogs(dialogs) {
+        if (!chatDialogsList) return;
+        
+        if (dialogs.length === 0) {
+            chatDialogsList.innerHTML = '<div class="text-center text-muted p-3">Нет диалогов</div>';
+            return;
+        }
+        
+        chatDialogsList.innerHTML = dialogs.map(dialog => `
+            <div class="chat-dialog-item-widget" data-user-id="${dialog.otherUserId}" data-user-name="${escapeHtml(dialog.otherUserName)}" data-user-role="${dialog.userRole}">
+                <div class="chat-dialog-avatar-widget">
+                    <div class="avatar-circle-widget" style="background: ${getRoleColor(dialog.userRole)}">
+                        ${dialog.otherUserName.charAt(0).toUpperCase()}
+                    </div>
+                </div>
+                <div class="chat-dialog-info-widget">
+                    <div class="chat-dialog-name-widget">${escapeHtml(dialog.otherUserName)}</div>
+                    <div class="chat-dialog-lastmsg-widget">${escapeHtml(dialog.lastMessage || 'Нет сообщений')}</div>
+                </div>
+                ${dialog.unreadCount > 0 ? `<span class="badge bg-danger rounded-pill" style="font-size: 10px;">${dialog.unreadCount}</span>` : ''}
+            </div>
+        `).join('');
+        
+        // Добавляем обработчики кликов
+        document.querySelectorAll('.chat-dialog-item-widget').forEach(el => {
+            el.addEventListener('click', () => {
+                const userId = parseInt(el.dataset.userId);
+                const userName = el.dataset.userName;
+                const userRole = el.dataset.userRole;
+                openChatDialog(userId, userName, userRole);
+            });
+        });
+    }
+    
+    // Загрузка пользователей для нового чата
+    // Загрузка пользователей для нового чата
+async function loadUsers() {
+    try {
+        const response = await fetch('/Chat/GetUsers');
+        const data = await response.json();
+        if (data.success && chatUsersList) {
+            let html = '';
+                    for (let i = 0; i < data.users.length; i++) {
+                        const user = data.users[i];
+                        html += '<div class="chat-user-item" data-user-id="' + user.id + '" data-user-name="' + escapeHtml(user.fullName) + '" data-user-role="' + user.role + '">';
+                        html += '<div><strong>' + escapeHtml(user.fullName) + '</strong><br />';
+                        html += '<small class="text-muted">' + user.userName + '</small></div>';
+                        html += '<span class="badge bg-secondary">' + user.role + '</span>';
+                        html += '</div>';
+                    }
+                    chatUsersList.innerHTML = html;
+                  
+            
+            document.querySelectorAll('.chat-user-item').forEach(function(el) {
+                el.addEventListener('click', function() {
+                    const userId = parseInt(el.dataset.userId);
+                    const userName = el.dataset.userName;
+                    const userRole = el.dataset.userRole;
+                    startNewChat(userId, userName, userRole);
+                });
             });
         }
+    } catch (error) {
+        console.error('Error loading users:', error);
+    }
+}
+    
+    function startNewChat(userId, userName, userRole) {
+        currentChatOtherUserId = userId;
+        chatCurrentUserName.textContent = userName;
+        chatCurrentUserRole.textContent = userRole;
+        
+        // Переключаемся на вид сообщений
+        chatDialogsView.style.display = 'none';
+        chatNewChatView.style.display = 'none';
+        chatMessagesView.style.display = 'flex';
+        chatWindowTitle.textContent = userName;
+        
+        loadMessages(userId);
+    }
+    
+    function openChatDialog(userId, userName, userRole) {
+        currentChatOtherUserId = userId;
+        chatCurrentUserName.textContent = userName;
+        chatCurrentUserRole.textContent = userRole;
+        
+        chatDialogsView.style.display = 'none';
+        chatNewChatView.style.display = 'none';
+        chatMessagesView.style.display = 'flex';
+        chatWindowTitle.textContent = userName;
+        
+        loadMessages(userId);
+    }
+    
+    async function loadMessages(userId) {
+        try {
+            const response = await fetch(`/Chat/GetMessages?userId=${userId}`);
+            const data = await response.json();
+            if (data.success && chatMessagesList) {
+                renderMessages(data.messages);
+                startChatPolling(userId);
+            }
+        } catch (error) {
+            console.error('Error loading messages:', error);
+        }
+    }
+    
+    function renderMessages(messages) {
+        if (!chatMessagesList) return;
+        
+        if (messages.length === 0) {
+            chatMessagesList.innerHTML = '<div class="text-center text-muted p-3">Нет сообщений. Напишите что-нибудь...</div>';
+            return;
+        }
+        
+        chatMessagesList.innerHTML = messages.map(msg => `
+            <div class="chat-message-widget ${msg.isMine ? 'mine' : 'other'}">
+                <div class="chat-message-bubble-widget">${escapeHtml(msg.message)}</div>
+                <div class="chat-message-time-widget ${msg.isMine ? 'text-end' : ''}">
+                    ${new Date(msg.sentAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                </div>
+            </div>
+        `).join('');
+        
+        // Прокрутка вниз
+        chatMessagesList.scrollTop = chatMessagesList.scrollHeight;
+    }
+
+        // Отправка сообщения
+        async function sendChatMessage() {
+            const message = chatMessageInput ? chatMessageInput.value.trim() : '';
+            if (!message || !currentChatOtherUserId) return;
+            if (chatMessageInput) chatMessageInput.value = '';
+
+            try {
+                const response = await fetch('/Chat/SendMessage', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                    },
+                    body: JSON.stringify({
+                        recipientId: currentChatOtherUserId,
+                        message: message
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    // Добавляем сообщение в список сразу
+                    if (chatMessagesList) {
+                        const msgHtml = '<div class="chat-message-widget mine">' +
+                            '<div class="chat-message-bubble-widget">' + escapeHtml(message) + '</div>' +
+                            '<div class="chat-message-time-widget text-end">' + new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) + '</div>' +
+                            '</div>';
+                        chatMessagesList.insertAdjacentHTML('beforeend', msgHtml);
+                        chatMessagesList.scrollTop = chatMessagesList.scrollHeight;
+                    }
+                    loadDialogs(); // Обновляем список диалогов
+                } else {
+                    console.error('Send error:', data.error);
+                }
+            } catch (error) {
+                console.error('Error sending message:', error);
+            }
+        }
+
+        function startChatPolling(userId) {
+        if (chatPollingInterval) clearInterval(chatPollingInterval);
+        chatPollingInterval = setInterval(() => {
+            if (currentChatOtherUserId === userId && chatMessagesView.style.display === 'flex') {
+                loadMessages(userId);
+            }
+            loadDialogs(); // Обновляем счетчики
+        }, 3000);
+    }
+    
+    function getRoleColor(role) {
+        const colors = { 'Admin': '#ef4444', 'Lecturer': '#22c55e', 'Student': '#3b82f6' };
+        return colors[role] || '#6366f1';
+    }
+    
+    // Обработчики навигации
+    if (newChatBtn) {
+        newChatBtn.addEventListener('click', () => {
+            chatDialogsView.style.display = 'none';
+            chatNewChatView.style.display = 'flex';
+            chatMessagesView.style.display = 'none';
+            loadUsers();
+        });
+    }
+    
+    if (chatBackToDialogs) {
+        chatBackToDialogs.addEventListener('click', () => {
+            chatDialogsView.style.display = 'flex';
+            chatNewChatView.style.display = 'none';
+            chatMessagesView.style.display = 'none';
+            chatWindowTitle.textContent = 'Сообщения';
+            loadDialogs();
+        });
+    }
+
+        // Кнопка назад из диалога к списку чатов
+        if (chatBackToDialogsFromMessages) {
+            chatBackToDialogsFromMessages.addEventListener('click', function () {
+                // Показываем список диалогов
+                if (chatDialogsView) chatDialogsView.style.display = 'flex';
+                if (chatNewChatView) chatNewChatView.style.display = 'none';
+                if (chatMessagesView) chatMessagesView.style.display = 'none';
+                if (chatWindowTitle) chatWindowTitle.textContent = 'Сообщения';
+
+                // Очищаем текущий диалог
+                currentChatOtherUserId = null;
+                if (chatPollingInterval) clearInterval(chatPollingInterval);
+
+                // Перезагружаем список диалогов
+                loadDialogs();
+            });
+        }
+
+        if (chatSendMsgBtn) chatSendMsgBtn.addEventListener('click', sendChatMessage);
+    if (chatMessageInput) chatMessageInput.addEventListener('keypress', (e) => e.key === 'Enter' && sendChatMessage());
 
         // Обработка дропдауна пользователя
         document.addEventListener('DOMContentLoaded', () => {
@@ -530,6 +878,9 @@
                 });
             }
         });
+
+
+
     </script>
 
     @await RenderSectionAsync("Scripts", required: false)

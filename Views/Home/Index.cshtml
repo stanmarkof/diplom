@@ -15,25 +15,49 @@
         var student = user as Student;
         hasGroup = student?.StudentGroupId.HasValue ?? false;
     }
+
+    // Получаем отзывы из ViewBag
+    var latestFeedbacks = ViewBag.LatestFeedbacks as List<Feedback> ?? new List<Feedback>();
 }
 
-<div class="text-center fade-in">
-    <h1 class="display-4 mb-4">Добро пожаловать в систему дистанционного обучения</h1>
+<div class="fade-in">
+    <!-- Главный баннер -->
+    <div class="text-center mb-5">
+        <h1 class="display-4 mb-3">Добро пожаловать в систему дистанционного обучения</h1>
 
-    @if (User.Identity.IsAuthenticated)
-    {
-        <p class="lead">Здравствуйте, @User.Identity.Name!</p>
-
-        @if (!hasGroup && isStudent)
+        @if (User.Identity.IsAuthenticated)
         {
-            <div class="alert alert-warning">
-                <i class="fas fa-info-circle"></i>
-                <strong>Внимание!</strong> Ваша группа ещё не назначена. Дождитесь назначения группы администратором.
+            <p class="lead">Здравствуйте, @User.Identity.Name!</p>
+
+            @if (!hasGroup && isStudent)
+            {
+                <div class="alert alert-warning">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Внимание!</strong> Ваша группа ещё не назначена. Дождитесь назначения группы администратором.
+                </div>
+            }
+        }
+        else
+        {
+            <p class="lead">Удобная платформа для получения знаний онлайн</p>
+            <div class="mt-4">
+                <a asp-controller="Account" asp-action="Login" class="btn btn-primary btn-lg mx-2">
+                    <i class="fas fa-sign-in-alt"></i> Вход
+                </a>
+                <a asp-controller="Account" asp-action="Register" class="btn btn-success btn-lg mx-2">
+                    <i class="fas fa-user-plus"></i> Регистрация
+                </a>
             </div>
         }
+    </div>
 
-        <div class="row mt-5">
-            @if (isAdmin)
+ 
+
+    <!-- Карточки с возможностями -->
+    <div class="row mt-4">
+        @if (User.Identity.IsAuthenticated)
+        {
+            if (isAdmin)
             {
                 <div class="col-md-4 mb-3">
                     <div class="card h-100">
@@ -67,7 +91,7 @@
                 </div>
             }
 
-            @if (isLecturer)
+            if (isLecturer)
             {
                 <div class="col-md-6 mb-3">
                     <div class="card h-100">
@@ -79,19 +103,10 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6 mb-3">
-                    <div class="card h-100">
-                        <div class="card-body text-center">
-                            <i class="fas fa-edit fa-3x mb-3" style="color: var(--success-color);"></i>
-                            <h5 class="card-title">Создать дисциплину</h5>
-                            <p class="card-text">Создание новой дисциплины</p>
-                            <a asp-controller="Lecturer" asp-action="CreateDiscipline" class="btn btn-primary">Перейти</a>
-                        </div>
-                    </div>
-                </div>
+             
             }
 
-            @if (isStudent && hasGroup)
+            if (isStudent && hasGroup)
             {
                 <div class="col-md-4 mb-3">
                     <div class="card h-100">
@@ -107,22 +122,13 @@
                     <div class="card h-100">
                         <div class="card-body text-center">
                             <i class="fas fa-tasks fa-3x mb-3" style="color: var(--success-color);"></i>
-                            <h5 class="card-title">Мои тесты</h5>
-                            <p class="card-text">Прохождение тестов и просмотр результатов</p>
-                            <a asp-controller="Student" asp-action="MyTests" class="btn btn-primary">Перейти</a>
+                            <h5 class="card-title">Мои результаты</h5>
+                            <p class="card-text">Просмотр результатов тестирования</p>
+                            <a asp-controller="Student" asp-action="MyResults" class="btn btn-primary">Перейти</a>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4 mb-3">
-                    <div class="card h-100">
-                        <div class="card-body text-center">
-                            <i class="fas fa-robot fa-3x mb-3" style="color: var(--secondary-color);"></i>
-                            <h5 class="card-title">AI Помощник</h5>
-                            <p class="card-text">Задайте вопрос AI боту по учебным материалам</p>
-                            <a asp-controller="Bot" asp-action="Index" class="btn btn-primary">Перейти</a>
-                        </div>
-                    </div>
-                </div>
+            
             }
             else if (isStudent && !hasGroup)
             {
@@ -134,47 +140,105 @@
                     </div>
                 </div>
             }
-        </div>
-    }
-    else
+        }
+        else
+        {
+      
+        }
+    </div>
+</div>
+
+   <!-- Блок с отзывами (для всех пользователей) -->
+    @if (latestFeedbacks.Any())
     {
-        <div class="mt-5">
-            <p class="lead">Добро пожаловать в систему дистанционного обучения!</p>
-            <p>Для доступа к учебным материалам необходимо войти в систему или зарегистрироваться.</p>
-            <div class="mt-4">
-                <a asp-controller="Account" asp-action="Login" class="btn btn-primary btn-lg mx-2">Вход</a>
-                <a asp-controller="Account" asp-action="Register" class="btn btn-success btn-lg mx-2">Регистрация</a>
+        <div class="mb-5">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="fas fa-comment-dots text-primary me-2"></i>
+                    Отзывы наших пользователей
+                </h2>
+              
             </div>
+
+            <div class="row">
+                @foreach (var feedback in latestFeedbacks)
+                {
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <strong class="fs-6">
+                                            <i class="fas fa-user-circle text-primary"></i>
+                                            @(feedback.User?.FullName ?? "Пользователь")
+                                        </strong>
+                                        <br />
+                                        <small class="text-muted">
+                                            <i class="far fa-calendar-alt"></i>
+                                            @feedback.CreatedAt.ToString("dd.MM.yyyy")
+                                        </small>
+                                    </div>
+                                    @if (feedback.Rating.HasValue)
+                                    {
+                                        <div class="text-warning">
+                                            @for (int i = 0; i < feedback.Rating.Value; i++)
+                                            {
+                                                <i class="fas fa-star"></i>
+                                            }
+                                            @for (int i = feedback.Rating.Value; i < 5; i++)
+                                            {
+                                                <i class="far fa-star"></i>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                                <p class="card-text mt-2">
+                                    <i class="fas fa-quote-left text-muted me-1"></i>
+                                    @(feedback.Message.Length > 150 ? feedback.Message.Substring(0, 150) + "..." : feedback.Message)
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+           
         </div>
 
-        <div class="row mt-5">
-            <div class="col-md-4 mb-3">
-                <div class="card h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-graduation-cap fa-3x mb-3"></i>
-                        <h5 class="card-title">Дистанционное обучение</h5>
-                        <p class="card-text">Удобная платформа для получения знаний онлайн</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4 mb-3">
-                <div class="card h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-tasks fa-3x mb-3"></i>
-                        <h5 class="card-title">Тестирование</h5>
-                        <p class="card-text">Проверка знаний с помощью тестов</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4 mb-3">
-                <div class="card h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-robot fa-3x mb-3"></i>
-                        <h5 class="card-title">AI Помощник</h5>
-                        <p class="card-text">Интеллектуальный помощник для обучения</p>
-                    </div>
-                </div>
-            </div>
-        </div>
     }
-</div>
+<!-- Скрипт для открытия бота -->
+<script>
+    document.getElementById('openBotFromHome')?.addEventListener('click', function () {
+        const botWindow = document.getElementById('botWindow');
+        if (botWindow) {
+            botWindow.classList.add('active');
+        }
+    });
+</script>
+
+<style>
+    .fade-in {
+        animation: fadeIn 0.5s ease-in-out;
+    }
+
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+</style>

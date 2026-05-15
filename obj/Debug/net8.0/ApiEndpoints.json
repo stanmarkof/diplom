@@ -105,6 +105,48 @@
   },
   {
     "ContainingType": "diplom.Controllers.FillEmbeddingsController",
+    "Method": "IndexMaterial",
+    "RelativePath": "api/FillEmbeddings/material/{materialId}",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "materialId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "diplom.Controllers.FillEmbeddingsController",
+    "Method": "DeleteMaterialIndex",
+    "RelativePath": "api/FillEmbeddings/material/{materialId}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "materialId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "diplom.Controllers.FillEmbeddingsController",
+    "Method": "IndexAllMaterials",
+    "RelativePath": "api/FillEmbeddings/materials",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "diplom.Controllers.FillEmbeddingsController",
     "Method": "GetStatus",
     "RelativePath": "api/FillEmbeddings/status",
     "HttpMethod": "GET",

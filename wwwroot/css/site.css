@@ -151,7 +151,8 @@ body {
     height: calc(100vh - 65px);
     background: var(--bg-sidebar);
     border-right: 1px solid var(--border-color);
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     z-index: 900;
     transition: width 0.3s ease;
 }
@@ -540,7 +541,7 @@ footer {
 /* ==================== ВИДЖЕТ БОТА ==================== */
 .bot-widget {
     position: fixed;
-    bottom: 100px;
+    bottom: 200px;
     right: 20px;
     z-index: 1000;
 }
@@ -625,11 +626,11 @@ footer {
 }
 
 .mode-ai {
-    color: #10a37f;
+    color: #2eebbc;
 }
 
 .mode-emb {
-    color: #6c757d;
+    color: #1a084d;
 }
 
 .switch-track {
@@ -997,4 +998,609 @@ footer {
     }
 
 
+}
+
+/* ==================== ВИДЖЕТ ЧАТА (МЕССЕНДЖЕР) ==================== */
+.chat-widget {
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    z-index: 1000;
+}
+
+.chat-toggle-btn {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+    .chat-toggle-btn:hover {
+        transform: scale(1.1);
+    }
+
+    .chat-toggle-btn svg {
+        width: 24px;
+        height: 24px;
+        fill: white;
+    }
+
+.unread-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: var(--accent-danger);
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+/* Виджет чата - окно */
+.chat-window {
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    width: 350px;
+    height: 500px;
+    background: var(--bg-card);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 1001;
+    border: 1px solid var(--border-color);
+}
+
+    .chat-window.active {
+        display: flex;
+    }
+
+/* Диалоги в виджете */
+.chat-dialogs-list-widget {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+}
+
+.chat-dialog-item-widget {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    border-radius: 0.5rem;
+}
+
+    .chat-dialog-item-widget:hover {
+        background: var(--bg-hover);
+    }
+
+    .chat-dialog-item-widget.active {
+        background: var(--bg-hover);
+    }
+
+.chat-dialog-avatar-widget {
+    flex-shrink: 0;
+}
+
+.avatar-circle-widget {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: white;
+    font-size: 1rem;
+}
+
+.chat-dialog-info-widget {
+    flex: 1;
+    min-width: 0;
+}
+
+.chat-dialog-name-widget {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.chat-dialog-lastmsg-widget {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Сообщения в виджете */
+.chat-messages-container-widget {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    background: var(--bg-primary);
+}
+
+.chat-message-widget {
+    display: flex;
+    flex-direction: column;
+    max-width: 85%;
+}
+
+    .chat-message-widget.mine {
+        align-self: flex-end;
+    }
+
+    .chat-message-widget.other {
+        align-self: flex-start;
+    }
+
+.chat-message-bubble-widget {
+    padding: 0.5rem 0.75rem;
+    border-radius: 1rem;
+    word-wrap: break-word;
+    font-size: 0.8rem;
+}
+
+.chat-message-widget.mine .chat-message-bubble-widget {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-bottom-right-radius: 0.25rem;
+}
+
+.chat-message-widget.other .chat-message-bubble-widget {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border-bottom-left-radius: 0.25rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.chat-message-time-widget {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    margin-top: 0.2rem;
+    padding: 0 0.5rem;
+}
+
+.chat-input-area-widget {
+    padding: 0.75rem;
+    background: var(--bg-card);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 0.5rem;
+}
+
+.chat-input-widget {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 1.5rem;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    outline: none;
+    font-size: 0.8rem;
+}
+
+    .chat-input-widget:focus {
+        border-color: var(--accent-primary);
+    }
+
+.chat-send-btn-widget {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+    .chat-send-btn-widget svg {
+        width: 14px;
+        height: 14px;
+        stroke: white;
+    }
+
+.chat-back-btn {
+    background: none;
+    border: none;
+    color: black;
+    cursor: pointer;
+    margin-right: 0.5rem;
+}
+
+/* Список пользователей для нового чата */
+.chat-users-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+}
+
+.chat-user-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem;
+    cursor: pointer;
+    border-radius: 0.5rem;
+    transition: background 0.2s ease;
+}
+
+    .chat-user-item:hover {
+        background: var(--bg-hover);
+    }
+
+@media (max-width: 576px) {
+    .chat-window {
+        width: calc(100% - 24px);
+        right: 12px;
+        left: 12px;
+        bottom: 80px;
+        height: 60vh;
+    }
+
+    .chat-widget {
+        bottom: 16px;
+        right: 12px;
+    }
+}
+/* ==================== АДАПТИВНЫЕ ВИДЖЕТЫ ==================== */
+
+/* Базовые размеры для больших экранов */
+.bot-widget,
+.chat-widget {
+    position: fixed;
+    z-index: 1000;
+}
+
+.bot-widget {
+    bottom: 100px;
+    right: 20px;
+}
+
+.chat-widget {
+    bottom: 20px;
+    right: 20px;
+}
+
+.bot-toggle-btn,
+.chat-toggle-btn {
+    width: 56px;
+    height: 56px;
+}
+
+.bot-window,
+.chat-window {
+    width: 380px;
+    height: 550px;
+    bottom: 100px;
+    right: 20px;
+}
+
+/* Планшеты (768px - 1024px) */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .bot-toggle-btn,
+    .chat-toggle-btn {
+        width: 52px !important;
+        height: 52px !important;
+    }
+
+    .bot-window,
+    .chat-window {
+        width: 360px !important;
+        height: 520px !important;
+    }
+
+    .bot-widget {
+        bottom: 90px !important;
+        right: 18px !important;
+    }
+
+    .chat-widget {
+        bottom: 18px !important;
+        right: 18px !important;
+    }
+}
+
+/* Большие планшеты (600px - 768px) */
+@media (max-width: 768px) and (min-width: 601px) {
+    .bot-toggle-btn,
+    .chat-toggle-btn {
+        width: 48px !important;
+        height: 48px !important;
+    }
+
+    .bot-window,
+    .chat-window {
+        width: 340px !important;
+        height: 480px !important;
+    }
+
+    .bot-widget {
+        bottom: 85px !important;
+        right: 15px !important;
+    }
+
+    .chat-widget {
+        bottom: 15px !important;
+        right: 15px !important;
+    }
+}
+
+/* Маленькие планшеты и большие телефоны (480px - 600px) */
+@media (max-width: 600px) and (min-width: 481px) {
+    .bot-toggle-btn,
+    .chat-toggle-btn {
+        width: 44px !important;
+        height: 44px !important;
+    }
+
+    .bot-window,
+    .chat-window {
+        width: 320px !important;
+        height: 450px !important;
+    }
+
+    .bot-widget {
+        bottom: 80px !important;
+        right: 12px !important;
+    }
+
+    .chat-widget {
+        bottom: 12px !important;
+        right: 12px !important;
+    }
+}
+
+/* Телефоны (375px - 480px) - iPhone SE, iPhone X, Pixel */
+@media (max-width: 480px) and (min-width: 376px) {
+    .bot-toggle-btn,
+    .chat-toggle-btn {
+        width: 42px !important;
+        height: 42px !important;
+    }
+
+    .bot-window,
+    .chat-window {
+        width: calc(100% - 30px) !important;
+        max-width: 340px !important;
+        height: 65vh !important;
+        max-height: 460px !important;
+        bottom: 80px !important;
+        right: 15px !important;
+    }
+
+    .bot-widget {
+        bottom: 75px !important;
+        right: 10px !important;
+    }
+
+    .chat-widget {
+        bottom: 10px !important;
+        right: 10px !important;
+    }
+}
+
+/* Очень маленькие телефоны (до 375px) - iPhone SE 1-го поколения */
+@media (max-width: 375px) {
+    .bot-toggle-btn,
+    .chat-toggle-btn {
+        width: 38px !important;
+        height: 38px !important;
+    }
+
+        .bot-toggle-btn svg,
+        .chat-toggle-btn svg {
+            width: 18px !important;
+            height: 18px !important;
+        }
+
+    .bot-window,
+    .chat-window {
+        width: calc(100% - 24px) !important;
+        max-width: 300px !important;
+        height: 60vh !important;
+        max-height: 400px !important;
+        bottom: 70px !important;
+        right: 12px !important;
+        left: auto !important;
+    }
+
+    .bot-widget {
+        bottom: 65px !important;
+        right: 8px !important;
+    }
+
+    .chat-widget {
+        bottom: 8px !important;
+        right: 8px !important;
+    }
+
+    /* Уменьшаем шрифты в виджетах */
+    .bot-header h5,
+    .chat-header h5 {
+        font-size: 14px !important;
+    }
+
+    .bot-header small,
+    .chat-header small {
+        font-size: 9px !important;
+    }
+
+    .bot-message .message-bubble,
+    .chat-message-bubble-widget {
+        font-size: 12px !important;
+        padding: 6px 10px !important;
+    }
+
+    .bot-input,
+    .chat-input-widget {
+        font-size: 12px !important;
+        padding: 8px 10px !important;
+    }
+
+    .mode-text {
+        font-size: 8px !important;
+    }
+
+    .switch-track {
+        width: 34px !important;
+        height: 18px !important;
+    }
+
+    .switch-thumb {
+        width: 14px !important;
+        height: 14px !important;
+        top: 2px !important;
+        left: 2px !important;
+    }
+
+    .switch-track.emb-mode .switch-thumb {
+        transform: translateX(16px) !important;
+    }
+}
+
+/* Горизонтальная ориентация на телефонах */
+@media (max-width: 800px) and (orientation: landscape) {
+    .bot-window,
+    .chat-window {
+        height: 80vh !important;
+        max-height: 350px !important;
+    }
+
+    .bot-toggle-btn,
+    .chat-toggle-btn {
+        width: 40px !important;
+        height: 40px !important;
+    }
+}
+
+/* Масштабирование при зуммировании браузера */
+@media (max-width: 800px) {
+    .bot-window,
+    .chat-window {
+        resize: both;
+        overflow: auto;
+        min-width: 250px;
+        min-height: 300px;
+    }
+}
+
+/* Адаптация для очень широких экранов */
+@media (min-width: 1600px) {
+    .bot-widget {
+        bottom: 120px !important;
+        right: 30px !important;
+    }
+
+    .chat-widget {
+        bottom: 30px !important;
+        right: 30px !important;
+    }
+
+    .bot-toggle-btn,
+    .chat-toggle-btn {
+        width: 64px !important;
+        height: 64px !important;
+    }
+
+    .bot-window,
+    .chat-window {
+        width: 420px !important;
+        height: 600px !important;
+    }
+}
+/* Плавное масштабирование всех элементов виджетов */
+.bot-widget,
+.chat-widget,
+.bot-window,
+.chat-window,
+.bot-toggle-btn,
+.chat-toggle-btn {
+    transition: all 0.2s ease-out !important;
+}
+
+/* Улучшаем читаемость при масштабировании */
+@media (max-width: 480px) {
+    .bot-messages,
+    .chat-messages-container-widget {
+        padding: 10px !important;
+    }
+
+    .bot-input-container,
+    .chat-input-area-widget {
+        padding: 8px !important;
+    }
+
+    .bot-avatar,
+    .chat-avatar {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 14px !important;
+    }
+}
+/* ==================== ПРОКРУТКА МЕНЮ ==================== */
+
+/* Для десктопа - когда меню расширено */
+.sidebar {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+}
+
+    /* Скрываем скроллбар но оставляем возможность скролла (для красоты) */
+    .sidebar::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .sidebar::-webkit-scrollbar-track {
+        background: var(--bg-sidebar);
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+        border-radius: 4px;
+    }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-primary);
+        }
+
+/* Для Firefox */
+.sidebar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) var(--bg-sidebar);
+}
+
+/* Убираем overflow: hidden который мешает прокрутке */
+.sidebar {
+    overflow-y: auto !important;
+}
+
+/* Для мобильной версии */
+@media (max-width: 768px) {
+    .sidebar {
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
 }
